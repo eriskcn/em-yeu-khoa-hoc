@@ -500,6 +500,118 @@ WBS mode remains active for the current project unless the user explicitly disab
 Outside WBS mode, ignore all WBS-related behavior and continue following the normal workflow described in this document.
 
 ---
+# 13. Optional Architecture Decision Records (ADR)
+
+Only use Architecture Decision Records (ADR) when the user explicitly requests them.
+
+Examples:
+
+* "Create an ADR"
+* "Record this architecture decision"
+* "Document this design decision"
+* "Use ADR for this project"
+
+Do not create or update ADR files automatically.
+
+---
+
+## ADR Purpose
+
+ADR documents capture significant technical decisions that are expected to remain relevant throughout the project.
+
+Examples include:
+
+* Architecture choices
+* Technology selection
+* Data model decisions
+* API design
+* Caching strategy
+* Authentication and authorization
+* Deployment strategy
+* Performance-related decisions
+
+Do not create ADRs for routine implementation details or temporary workarounds.
+
+---
+
+## ADR Initialization
+
+When ADR mode is enabled:
+
+1. Create an `adr/` directory if it does not exist.
+2. Store each decision as a separate Markdown document.
+
+Recommended structure:
+
+```text
+adr/
+├── 001-authentication.md
+├── 002-caching-strategy.md
+└── 003-api-versioning.md
+```
+
+Use sequential numbering to preserve chronological order.
+
+---
+
+## ADR Template
+
+Each ADR should include:
+
+* Title
+* Status (Proposed, Accepted, Superseded, Deprecated)
+* Context
+* Decision
+* Consequences
+* Alternatives Considered (optional)
+
+Focus on explaining **why** a decision was made rather than how it was implemented.
+
+---
+
+## Using ADR During Development
+
+When ADR mode is active:
+
+* Consult existing ADRs before proposing architectural changes.
+* Follow accepted ADRs unless the user explicitly requests revisiting them.
+* If a proposed solution conflicts with an accepted ADR, explain the conflict before proceeding.
+
+Do not silently ignore existing architecture decisions.
+
+---
+
+## Updating ADRs
+
+Architecture decisions are historical records.
+
+Do not rewrite accepted ADRs.
+
+If a decision changes:
+
+* Create a new ADR.
+* Reference the previous ADR.
+* Mark the previous ADR as Superseded if appropriate.
+
+Preserve decision history whenever possible.
+
+---
+
+## ADR Scope
+
+ADR mode remains active for the current project unless the user explicitly disables it.
+
+Outside ADR mode, ignore all ADR-related behavior and continue following the normal workflow described in this document.
+
+## ADR Creation Guidance
+
+When a WBS task introduces a significant architectural decision,
+recommend creating an ADR before implementation.
+
+Do not create the ADR automatically.
+Wait for user confirmation.
+
+---
 
 # Session Naming Convention
 

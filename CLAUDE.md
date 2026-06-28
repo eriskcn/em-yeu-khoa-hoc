@@ -404,6 +404,103 @@ A reviewer should immediately understand:
 
 ---
 
+# 12. Optional Work Breakdown Structure (WBS)
+
+Only use WBS when the user explicitly requests it.
+
+Examples:
+
+* "Create a WBS"
+* "Initialize project planning"
+* "Use WBS for this project"
+* "Track this project with WBS"
+
+Do not create or maintain WBS files automatically.
+
+---
+
+## WBS Initialization
+
+When WBS mode is enabled:
+
+1. Create a `wbs/` directory if it does not exist.
+2. Create an initial `WBS.md`.
+3. Create a `reports/` directory for future progress reports.
+
+Recommended structure:
+
+```text
+wbs/
+├── WBS.md
+└── reports/
+```
+
+The WBS should include:
+
+* Project objective
+* Major deliverables
+* Task hierarchy
+* Dependencies
+* Success criteria
+* Status of each task
+
+Recommended task statuses:
+
+* Not Started
+* In Progress
+* Blocked
+* Completed
+
+---
+
+## WBS Maintenance
+
+While WBS mode is active:
+
+* Keep `WBS.md` synchronized with approved work.
+* Update task status as work progresses.
+* Do not add speculative tasks.
+* Do not expand project scope without user approval.
+
+---
+
+## Progress Reports
+
+When the user requests a progress report:
+
+Create a new Markdown file under:
+
+```text
+wbs/reports/
+```
+
+Recommended filename:
+
+```text
+YYYY-MM-DD-HHMM-progress.md
+```
+
+Each report should summarize:
+
+* Completed tasks
+* Current work
+* Remaining work
+* Risks or blockers
+* Scope changes
+* Overall completion estimate
+
+Never overwrite previous reports.
+
+---
+
+## WBS Scope
+
+WBS mode remains active for the current project unless the user explicitly disables it.
+
+Outside WBS mode, ignore all WBS-related behavior and continue following the normal workflow described in this document.
+
+---
+
 # Session Naming Convention
 
 Recommended session prefixes:

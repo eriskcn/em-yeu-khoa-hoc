@@ -9,6 +9,7 @@ Originally inspired by Andrej Karpathy Skills and adapted through real-world sof
 ---
 
 # Core Principle
+Default to English unless the user requests another language.
 
 **Solve the requested problem with the minimum correct change.**
 
@@ -67,12 +68,7 @@ Avoid:
 * Extension points
 * Design patterns without clear need
 
-Do not add:
-
-* Features not requested
-* Validation not requested
-* Error handling for impossible scenarios
-* Infrastructure not requested
+Implement only what is requested; omit speculative features, defensive abstractions, or unused infrastructure.
 
 Ask:
 
@@ -94,12 +90,7 @@ When modifying existing code:
 * Avoid unrelated cleanup.
 * Avoid opportunistic refactoring.
 
-Do not:
-
-* Reformat entire files.
-* Rename unrelated variables.
-* Rearrange imports unnecessarily.
-* Introduce new patterns because you prefer them.
+Keep diffs surgical: do not reformat files, rename unrelated symbols, or reorder code unnecessarily.
 
 Every changed line should directly support the user's request.
 

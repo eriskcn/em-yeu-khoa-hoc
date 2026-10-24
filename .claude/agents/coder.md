@@ -1,7 +1,11 @@
 ---
 name: coder
 description: Implementation worker running in an isolated git worktree
-tools: Bash, Read, Edit, Write
+tools:
+  - Bash
+  - Read
+  - Edit
+  - Write
 model: sonnet
 isolation: worktree
 effort: medium

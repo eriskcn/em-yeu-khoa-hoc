@@ -1,7 +1,9 @@
 ---
 name: reviewer
 description: Read-only reviewer for diffs and pull requests
-tools: Bash, Read
+tools:
+  - Bash
+  - Read
 model: sonnet
 effort: high
 ---

@@ -1,0 +1,16 @@
+{
+  "customModes": [
+    {
+      "slug": "coder",
+      "name": "Coder",
+      "roleDefinition": "Implementation worker running in an isolated git worktree. Scope edits strictly to assigned files. Run checks or tests before returning.",
+      "groups": ["read", "edit", "command"]
+    },
+    {
+      "slug": "reviewer",
+      "name": "Reviewer",
+      "roleDefinition": "Read-only reviewer for diffs and pull requests. Do not modify files. Report findings with concrete file and line references.",
+      "groups": ["read", "command"]
+    }
+  ]
+}

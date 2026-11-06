@@ -25,7 +25,7 @@
   </div>
 
   <main class="min-h-screen max-w-xl mx-auto px-4 flex flex-col justify-center">
-    <img src="./assets/avatar.png" alt="Dinh Thanh Hoai" class="h-32 w-32 rounded-full bg-white object-cover ring-4 ring-indigo-500/30">
+    <img src="./assets/avatar.png" alt="Dinh Thanh Hoai" class="h-32 w-32 cursor-pointer rounded-full bg-white object-cover ring-4 ring-indigo-500/30 transition-transform hover:scale-105">
     <h1 class="mt-6 whitespace-pre-line text-4xl font-bold tracking-tight" data-en="Hi guys,&#10;I'm Dinh Thanh Hoai" data-vi="Xin chào, xin chào!&#10;Mình là Đinh Thanh Hoài"></h1>
     <blockquote class="mt-6 border-l-4 border-indigo-500 pl-4 text-lg italic text-slate-600 dark:text-slate-300"
       data-en="&quot;If compound interest is the eighth wonder of the world, then Dependency Injection must be the ninth.&quot;"
@@ -58,6 +58,19 @@
     langBtn.onclick = () => { lang = lang === 'en' ? 'vi' : 'en'; set('lang', lang); renderLang(); };
 
     renderLang();
+
+    // Avatar click: grow a circle from the avatar until it covers the page, then navigate.
+    document.querySelector('main img').onclick = (e) => {
+      const r = e.target.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const radius = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy));
+      const veil = document.createElement('div');
+      veil.style.cssText = `position:fixed;inset:0;z-index:50;background:#0b1120;transition:clip-path .6s ease-in;clip-path:circle(${r.width / 2}px at ${cx}px ${cy}px)`;
+      document.body.append(veil);
+      veil.getBoundingClientRect(); // force reflow so the transition starts
+      veil.style.clipPath = `circle(${radius}px at ${cx}px ${cy}px)`;
+      setTimeout(() => (location.href = './football-replay/'), 600);
+    };
   </script>
 </body>
 </html>

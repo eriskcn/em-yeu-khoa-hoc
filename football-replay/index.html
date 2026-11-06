@@ -58,6 +58,9 @@ details li{margin:4px 0}
     <label><span data-i18n="colA"></span> <input type="color" id="colA" value="#1e6fd9"></label>
     <label><span data-i18n="colB"></span> <input type="color" id="colB" value="#e03c31"></label>
     <button id="reset" data-i18n="reset"></button>
+    <button id="export" data-i18n="export"></button>
+    <button id="import" data-i18n="import"></button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
 
   <div class="tools" id="tools">
@@ -149,7 +152,8 @@ const I18N = {
   vi: {
     title: 'Mô phỏng tình huống bóng đá',
     mode5: 'Sân 5 người', mode7: 'Sân 7 người', mode11: 'Sân 11 người',
-    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình',
+    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', export: 'Xuất', import: 'Nhập',
+    st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
     tool_move: 'Di chuyển', tool_pass: 'Chuyền', tool_cross: 'Tạt bóng', tool_shot: 'Sút',
     tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không',
     st_move: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Khung hình được tạo tự động tại thời điểm hiện tại.',
@@ -185,7 +189,8 @@ const I18N = {
   en: {
     title: 'Football Scenario Simulator',
     mode5: '5-a-side', mode7: '7-a-side', mode11: '11-a-side',
-    colA: 'Team A', colB: 'Team B', reset: 'Reset formation',
+    colA: 'Team A', colB: 'Team B', reset: 'Reset formation', export: 'Export', import: 'Import',
+    st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
     tool_move: 'Move', tool_pass: 'Pass', tool_cross: 'Cross', tool_shot: 'Shot',
     tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial',
     st_move: 'Drag players or the ball to position them. Keyframes are created automatically at the current time.',
@@ -898,6 +903,21 @@ $('pdur').addEventListener('input', e => setParam('dur', Math.max(0.2, +e.target
 $('pbend').addEventListener('input', e => setParam('bend', +e.target.value));
 $('plift').addEventListener('input', e => setParam('lift', +e.target.value));
 $('reset').addEventListener('click', build);
+$('export').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(serialize())], {type: 'application/json'}));
+  a.download = 'scenario.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('import').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try { restore(JSON.parse(await f.text())); setStatus('st_imported'); }
+  catch { setStatus('st_importFail'); }
+});
 $('mode').addEventListener('change', e => {
   mode = e.target.value;
   resize();

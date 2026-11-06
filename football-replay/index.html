@@ -18,13 +18,14 @@ button:disabled,input:disabled{opacity:.4;cursor:default}
 input[type=color]{padding:2px;width:40px;height:34px}
 label{display:flex;align-items:center;gap:6px;font-size:13px}
 .lang button{padding:4px 10px;font-size:12px}
+.back{color:#e2e8f0;text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid #334155;border-radius:8px;background:#1e293b}
 .lang button.on{background:#2563eb;border-color:#2563eb}
 .tools{display:flex;gap:6px;flex-wrap:wrap}
 .tool{display:flex;flex-direction:column;align-items:center;min-width:92px;padding:8px 6px}
 .tool small{font-size:10px;opacity:.6;margin-top:2px}
 .tool.on{background:#2563eb;border-color:#2563eb}
 .status{padding:10px 14px;border-radius:8px;background:#1e3a8a;font-size:14px;min-height:42px;display:flex;align-items:center;margin-top:8px}
-canvas{width:100%;display:block;border-radius:10px;margin-top:8px}
+canvas{width:100%;display:block;touch-action:none;border-radius:10px;margin-top:8px}
 .timeline{position:relative;min-height:96px;background:#111827;border-radius:10px;margin-top:8px;overflow:hidden;cursor:pointer;user-select:none;touch-action:none}
 .tick{position:absolute;top:4px;font-size:10px;color:#64748b;transform:translateX(-50%);pointer-events:none}
 .kf{position:absolute;top:24px;width:12px;height:12px;background:#facc15;transform:translateX(-50%) rotate(45deg);cursor:pointer}
@@ -45,6 +46,7 @@ details li{margin:4px 0}
   <header>
     <h1 data-i18n="title"></h1>
     <div class="row lang" style="margin:0">
+      <a href="../" class="back" data-i18n="back"></a>
       <button data-lang="en">EN</button><button data-lang="vi" class="on">VI</button>
     </div>
   </header>
@@ -151,6 +153,7 @@ const KEYS = {v:'move',p:'pass',c:'cross',s:'shot',d:'dribble',t:'tackle',b:'blo
 const I18N = {
   vi: {
     title: 'Mô phỏng tình huống bóng đá',
+    back: '← Trang chủ', confirmLose: 'Thao tác này sẽ xóa kịch bản hiện tại. Tiếp tục?',
     mode5: 'Sân 5 người', mode7: 'Sân 7 người', mode11: 'Sân 11 người',
     colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', export: 'Xuất', import: 'Nhập',
     st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
@@ -188,6 +191,7 @@ const I18N = {
   },
   en: {
     title: 'Football Scenario Simulator',
+    back: '← Home', confirmLose: 'This will discard the current scenario. Continue?',
     mode5: '5-a-side', mode7: '7-a-side', mode11: '11-a-side',
     colA: 'Team A', colB: 'Team B', reset: 'Reset formation', export: 'Export', import: 'Import',
     st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
@@ -913,7 +917,8 @@ $('pdel').addEventListener('click', deleteEvent);
 $('pdur').addEventListener('input', e => setParam('dur', Math.max(0.2, +e.target.value)));
 $('pbend').addEventListener('input', e => setParam('bend', +e.target.value));
 $('plift').addEventListener('input', e => setParam('lift', +e.target.value));
-$('reset').addEventListener('click', () => { build(); scheduleSave(); });
+const okToLose = () => (!events.length && kfs.length <= 1) || confirm(T('confirmLose'));
+$('reset').addEventListener('click', () => { if (!okToLose()) return; build(); scheduleSave(); });
 $('export').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(serialize())], {type: 'application/json'}));
@@ -930,6 +935,7 @@ $('importFile').addEventListener('change', async e => {
   catch { setStatus('st_importFail'); }
 });
 $('mode').addEventListener('change', e => {
+  if (!okToLose()) { e.target.value = mode; return; }
   mode = e.target.value;
   resize();
   build();

@@ -295,6 +295,48 @@ function build() {
   setPlayLabel();
 }
 
+// Scenario JSON (v1): {v, mode, colA, colB, kfs:[{t,p:[{x,y}]}], events:[{...event, endKf:index|null}], evSeq}
+function serialize() {
+  return {
+    v: 1, mode, colA: $('colA').value, colB: $('colB').value, evSeq,
+    kfs: kfs.map(k => ({t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))})),
+    events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)}))
+  };
+}
+
+// Throws on invalid input; leaves current state untouched in that case.
+function restore(d) {
+  const n = FORMATIONS[d && d.mode] ? FORMATIONS[d.mode].length * 2 + 1 : 0;
+  const num = v => typeof v === 'number' && isFinite(v);
+  const color = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+  if (!d || d.v !== 1 || !n || !color(d.colA) || !color(d.colB) || !num(d.evSeq)) throw new Error('bad scenario');
+  if (!Array.isArray(d.kfs) || !d.kfs.length || !Array.isArray(d.events)) throw new Error('bad scenario');
+  const k2 = d.kfs.map(k => {
+    if (!num(k.t) || !Array.isArray(k.p) || k.p.length !== n || !k.p.every(q => num(q.x) && num(q.y))) throw new Error('bad keyframe');
+    return {t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))};
+  });
+  const e2 = d.events.map(e => {
+    const ok = TYPE_DEFAULTS[e.type] && num(e.t) && num(e.dur) && e.dur > 0 && num(e.bend) && num(e.lift) && num(e.id) &&
+      Number.isInteger(e.actor) && e.actor >= 0 && e.actor < n &&
+      (e.target === null || e.target === 'goal' || (Number.isInteger(e.target) && e.target >= 0 && e.target < n)) &&
+      (e.endKf === -1 || k2[e.endKf]);
+    if (!ok) throw new Error('bad event');
+    return {...e, endKf: e.endKf === -1 ? null : k2[e.endKf]};
+  });
+  mode = d.mode;
+  $('mode').value = mode;
+  $('colA').value = d.colA;
+  $('colB').value = d.colB;
+  resize();
+  build();
+  kfs = k2;
+  events = e2;
+  evSeq = d.evSeq;
+  applyTime(0);
+  renderTimeline();
+  updateEventPanel();
+}
+
 function interp(t) {
   const k = kfs;
   if (t <= k[0].t) return k[0].p;

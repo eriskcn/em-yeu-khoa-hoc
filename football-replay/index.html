@@ -58,6 +58,9 @@ details li{margin:4px 0}
     <label><span data-i18n="colA"></span> <input type="color" id="colA" value="#1e6fd9"></label>
     <label><span data-i18n="colB"></span> <input type="color" id="colB" value="#e03c31"></label>
     <button id="reset" data-i18n="reset"></button>
+    <button id="export" data-i18n="export"></button>
+    <button id="import" data-i18n="import"></button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
 
   <div class="tools" id="tools">
@@ -149,7 +152,8 @@ const I18N = {
   vi: {
     title: 'Mô phỏng tình huống bóng đá',
     mode5: 'Sân 5 người', mode7: 'Sân 7 người', mode11: 'Sân 11 người',
-    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình',
+    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', export: 'Xuất', import: 'Nhập',
+    st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
     tool_move: 'Di chuyển', tool_pass: 'Chuyền', tool_cross: 'Tạt bóng', tool_shot: 'Sút',
     tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không',
     st_move: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Khung hình được tạo tự động tại thời điểm hiện tại.',
@@ -185,7 +189,8 @@ const I18N = {
   en: {
     title: 'Football Scenario Simulator',
     mode5: '5-a-side', mode7: '7-a-side', mode11: '11-a-side',
-    colA: 'Team A', colB: 'Team B', reset: 'Reset formation',
+    colA: 'Team A', colB: 'Team B', reset: 'Reset formation', export: 'Export', import: 'Import',
+    st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
     tool_move: 'Move', tool_pass: 'Pass', tool_cross: 'Cross', tool_shot: 'Shot',
     tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial',
     st_move: 'Drag players or the ball to position them. Keyframes are created automatically at the current time.',
@@ -293,6 +298,55 @@ function build() {
   renderTimeline();
   updateEventPanel();
   setPlayLabel();
+}
+
+const KEY = 'football-replay:scenario';
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(serialize())); } catch {} }, 300);
+}
+
+// Scenario JSON (v1): {v, mode, colA, colB, kfs:[{t,p:[{x,y}]}], events:[{...event, endKf:index|null}], evSeq}
+function serialize() {
+  return {
+    v: 1, mode, colA: $('colA').value, colB: $('colB').value, evSeq,
+    kfs: kfs.map(k => ({t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))})),
+    events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)}))
+  };
+}
+
+// Throws on invalid input; leaves current state untouched in that case.
+function restore(d) {
+  const n = FORMATIONS[d && d.mode] ? FORMATIONS[d.mode].length * 2 + 1 : 0;
+  const num = v => typeof v === 'number' && isFinite(v);
+  const color = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+  if (!d || d.v !== 1 || !n || !color(d.colA) || !color(d.colB) || !num(d.evSeq)) throw new Error('bad scenario');
+  if (!Array.isArray(d.kfs) || !d.kfs.length || !Array.isArray(d.events)) throw new Error('bad scenario');
+  const k2 = d.kfs.map(k => {
+    if (!num(k.t) || !Array.isArray(k.p) || k.p.length !== n || !k.p.every(q => num(q.x) && num(q.y))) throw new Error('bad keyframe');
+    return {t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))};
+  });
+  const e2 = d.events.map(e => {
+    const ok = TYPE_DEFAULTS[e.type] && num(e.t) && num(e.dur) && e.dur > 0 && num(e.bend) && num(e.lift) && num(e.id) &&
+      Number.isInteger(e.actor) && e.actor >= 0 && e.actor < n &&
+      (e.target === null || e.target === 'goal' || (Number.isInteger(e.target) && e.target >= 0 && e.target < n)) &&
+      (e.endKf === -1 || k2[e.endKf]);
+    if (!ok) throw new Error('bad event');
+    return {...e, endKf: e.endKf === -1 ? null : k2[e.endKf]};
+  });
+  mode = d.mode;
+  $('mode').value = mode;
+  $('colA').value = d.colA;
+  $('colB').value = d.colB;
+  resize();
+  build();
+  kfs = k2;
+  events = e2;
+  evSeq = d.evSeq;
+  applyTime(0);
+  renderTimeline();
+  updateEventPanel();
 }
 
 function interp(t) {
@@ -420,6 +474,7 @@ function createEvent(type, actor, target) {
   renderTimeline();
   updateEventPanel();
   setStatus('st_added');
+  scheduleSave();
 }
 
 function deleteEvent() {
@@ -430,6 +485,7 @@ function deleteEvent() {
   renderTimeline();
   updateEventPanel();
   setStatus('st_deleted');
+  scheduleSave();
 }
 
 function deleteKeyHere() {
@@ -439,6 +495,7 @@ function deleteKeyHere() {
   applyTime(state.t);
   renderTimeline();
   setStatus('st_keyDeleted');
+  scheduleSave();
 }
 
 function setTool(name) {
@@ -511,6 +568,7 @@ function setParam(key, val) {
     renderTimeline();
   }
   updateEventPanel();
+  scheduleSave();
 }
 
 function renderTimeline() {
@@ -831,7 +889,7 @@ cvs.addEventListener('pointermove', e => {
 cvs.addEventListener('pointerleave', () => { mpos = null; });
 
 function endDrag(e) {
-  if (drag && e.pointerId === drag.pid) drag = null;
+  if (drag && e.pointerId === drag.pid) { drag = null; scheduleSave(); }
 }
 cvs.addEventListener('pointerup', endDrag);
 cvs.addEventListener('pointercancel', endDrag);
@@ -855,14 +913,30 @@ $('pdel').addEventListener('click', deleteEvent);
 $('pdur').addEventListener('input', e => setParam('dur', Math.max(0.2, +e.target.value)));
 $('pbend').addEventListener('input', e => setParam('bend', +e.target.value));
 $('plift').addEventListener('input', e => setParam('lift', +e.target.value));
-$('reset').addEventListener('click', build);
+$('reset').addEventListener('click', () => { build(); scheduleSave(); });
+$('export').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(serialize())], {type: 'application/json'}));
+  a.download = 'scenario.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('import').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try { restore(JSON.parse(await f.text())); setStatus('st_imported'); scheduleSave(); }
+  catch { setStatus('st_importFail'); }
+});
 $('mode').addEventListener('change', e => {
   mode = e.target.value;
   resize();
   build();
+  scheduleSave();
 });
-$('colA').addEventListener('input', draw);
-$('colB').addEventListener('input', draw);
+$('colA').addEventListener('input', () => { draw(); scheduleSave(); });
+$('colB').addEventListener('input', () => { draw(); scheduleSave(); });
 
 document.querySelectorAll('.tool').forEach(b => {
   b.addEventListener('click', () => setTool(b.dataset.tool));
@@ -903,6 +977,7 @@ state.speed = +$('speed').value;
 applyI18n();
 build();
 setTool('move');
+try { restore(JSON.parse(localStorage.getItem(KEY))); } catch {}
 resize();
 requestAnimationFrame(loop);
 </script>

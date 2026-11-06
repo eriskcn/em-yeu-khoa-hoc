@@ -29,9 +29,9 @@ Status: Not Started | In Progress | Blocked | Completed
 | ID | Task | Depends on | Status |
 |----|------|-----------|--------|
 | 1 | Review current implementation | none | Completed |
-| 2 | Persistence | none | Not Started |
-| 2.1 | Define scenario JSON shape (mode, colors, keyframes, events) | 1 | Not Started |
-| 2.2 | Export/import `.json` file buttons, with validation of imported data | 2.1 | Not Started |
+| 2 | Persistence | none | In Progress |
+| 2.1 | Define scenario JSON shape (mode, colors, keyframes, events) | 1 | Completed |
+| 2.2 | Export/import `.json` file buttons, with validation of imported data | 2.1 | Completed |
 | 2.3 | Autosave to `localStorage` (try/catch, as on the home page) | 2.1 | Not Started |
 | 3 | Undo/redo | 2.1 | Not Started |
 | 3.1 | Snapshot stack on drag end / event create / delete / reset | 2.1 | Not Started |

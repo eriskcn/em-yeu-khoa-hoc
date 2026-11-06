@@ -295,6 +295,13 @@ function build() {
   setPlayLabel();
 }
 
+const KEY = 'football-replay:scenario';
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(serialize())); } catch {} }, 300);
+}
+
 // Scenario JSON (v1): {v, mode, colA, colB, kfs:[{t,p:[{x,y}]}], events:[{...event, endKf:index|null}], evSeq}
 function serialize() {
   return {
@@ -462,6 +469,7 @@ function createEvent(type, actor, target) {
   renderTimeline();
   updateEventPanel();
   setStatus('st_added');
+  scheduleSave();
 }
 
 function deleteEvent() {
@@ -472,6 +480,7 @@ function deleteEvent() {
   renderTimeline();
   updateEventPanel();
   setStatus('st_deleted');
+  scheduleSave();
 }
 
 function deleteKeyHere() {
@@ -481,6 +490,7 @@ function deleteKeyHere() {
   applyTime(state.t);
   renderTimeline();
   setStatus('st_keyDeleted');
+  scheduleSave();
 }
 
 function setTool(name) {
@@ -553,6 +563,7 @@ function setParam(key, val) {
     renderTimeline();
   }
   updateEventPanel();
+  scheduleSave();
 }
 
 function renderTimeline() {
@@ -873,7 +884,7 @@ cvs.addEventListener('pointermove', e => {
 cvs.addEventListener('pointerleave', () => { mpos = null; });
 
 function endDrag(e) {
-  if (drag && e.pointerId === drag.pid) drag = null;
+  if (drag && e.pointerId === drag.pid) { drag = null; scheduleSave(); }
 }
 cvs.addEventListener('pointerup', endDrag);
 cvs.addEventListener('pointercancel', endDrag);
@@ -897,14 +908,15 @@ $('pdel').addEventListener('click', deleteEvent);
 $('pdur').addEventListener('input', e => setParam('dur', Math.max(0.2, +e.target.value)));
 $('pbend').addEventListener('input', e => setParam('bend', +e.target.value));
 $('plift').addEventListener('input', e => setParam('lift', +e.target.value));
-$('reset').addEventListener('click', build);
+$('reset').addEventListener('click', () => { build(); scheduleSave(); });
 $('mode').addEventListener('change', e => {
   mode = e.target.value;
   resize();
   build();
+  scheduleSave();
 });
-$('colA').addEventListener('input', draw);
-$('colB').addEventListener('input', draw);
+$('colA').addEventListener('input', () => { draw(); scheduleSave(); });
+$('colB').addEventListener('input', () => { draw(); scheduleSave(); });
 
 document.querySelectorAll('.tool').forEach(b => {
   b.addEventListener('click', () => setTool(b.dataset.tool));
@@ -945,6 +957,7 @@ state.speed = +$('speed').value;
 applyI18n();
 build();
 setTool('move');
+try { restore(JSON.parse(localStorage.getItem(KEY))); } catch {}
 resize();
 requestAnimationFrame(loop);
 </script>

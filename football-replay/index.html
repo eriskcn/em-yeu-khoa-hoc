@@ -58,6 +58,8 @@ details li{margin:4px 0}
     <label><span data-i18n="colA"></span> <input type="color" id="colA" value="#1e6fd9"></label>
     <label><span data-i18n="colB"></span> <input type="color" id="colB" value="#e03c31"></label>
     <button id="reset" data-i18n="reset"></button>
+    <button id="undo" data-i18n="undo" disabled></button>
+    <button id="redo" data-i18n="redo" disabled></button>
     <button id="export" data-i18n="export"></button>
     <button id="import" data-i18n="import"></button>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
@@ -152,7 +154,7 @@ const I18N = {
   vi: {
     title: 'Mô phỏng tình huống bóng đá',
     mode5: 'Sân 5 người', mode7: 'Sân 7 người', mode11: 'Sân 11 người',
-    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', export: 'Xuất', import: 'Nhập',
+    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', undo: 'Hoàn tác', redo: 'Làm lại', export: 'Xuất', import: 'Nhập',
     st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
     tool_move: 'Di chuyển', tool_pass: 'Chuyền', tool_cross: 'Tạt bóng', tool_shot: 'Sút',
     tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không',
@@ -189,7 +191,7 @@ const I18N = {
   en: {
     title: 'Football Scenario Simulator',
     mode5: '5-a-side', mode7: '7-a-side', mode11: '11-a-side',
-    colA: 'Team A', colB: 'Team B', reset: 'Reset formation', export: 'Export', import: 'Import',
+    colA: 'Team A', colB: 'Team B', reset: 'Reset formation', undo: 'Undo', redo: 'Redo', export: 'Export', import: 'Import',
     st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
     tool_move: 'Move', tool_pass: 'Pass', tool_cross: 'Cross', tool_shot: 'Shot',
     tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial',
@@ -304,8 +306,41 @@ const KEY = 'football-replay:scenario';
 let saveTimer = 0;
 function scheduleSave() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(serialize())); } catch {} }, 300);
+  saveTimer = setTimeout(save, 300);
+  pushHistory();
 }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(serialize())); } catch {} }
+
+// Undo/redo: undoStack top = current state.
+const undoStack = [], redoStack = [];
+let restoring = false;
+function pushHistory() {
+  if (restoring) return;
+  const s = JSON.stringify(serialize());
+  if (s === undoStack[undoStack.length - 1]) return;
+  undoStack.push(s);
+  if (undoStack.length > 100) undoStack.shift();
+  redoStack.length = 0;
+  updateHistoryButtons();
+}
+function updateHistoryButtons() {
+  $('undo').disabled = undoStack.length < 2;
+  $('redo').disabled = !redoStack.length;
+}
+function stepHistory(from, to) {
+  if (from.length < (from === undoStack ? 2 : 1)) return;
+  const cur = undoStack[undoStack.length - 1];
+  const snap = from === undoStack ? undoStack[undoStack.length - 2] : from[from.length - 1];
+  restoring = true;
+  try { restore(JSON.parse(snap)); } catch { restoring = false; return; }
+  restoring = false;
+  if (from === undoStack) { redoStack.push(undoStack.pop()); } else { undoStack.push(redoStack.pop()); }
+  clearTimeout(saveTimer);
+  save();
+  updateHistoryButtons();
+}
+const undo = () => stepHistory(undoStack, redoStack);
+const redo = () => stepHistory(redoStack, undoStack);
 
 // Scenario JSON (v1): {v, mode, colA, colB, kfs:[{t,p:[{x,y}]}], events:[{...event, endKf:index|null}], evSeq}
 function serialize() {
@@ -953,6 +988,14 @@ document.querySelectorAll('.lang button').forEach(b => {
 window.addEventListener('resize', resize);
 window.addEventListener('keydown', e => {
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && e.target.type !== 'range') return;
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    const z = e.key.toLowerCase();
+    if (z === 'z' || z === 'y') {
+      e.preventDefault();
+      (z === 'y' || e.shiftKey ? redo : undo)();
+      return;
+    }
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     state.playing ? pause() : play();
@@ -979,6 +1022,9 @@ build();
 setTool('move');
 try { restore(JSON.parse(localStorage.getItem(KEY))); } catch {}
 resize();
+pushHistory();
+$('undo').addEventListener('click', undo);
+$('redo').addEventListener('click', redo);
 requestAnimationFrame(loop);
 </script>
 </body>

@@ -6,7 +6,7 @@ import {toPx, toNorm} from '../rendering/pitch-renderer.js';
 test('zoomAt keeps the focus point fixed and clamps scale', () => {
   const v = zoomAt(identity, 2, 100, 50);
   assert.equal(v.scale, 2);
-  assert.deepEqual({x: 100 * v.scale + v.ox, y: 50 * v.scale + v.oy}, {x: 200, y: 100});
+  assert.deepEqual({x: 100 * v.scale + v.ox, y: 50 * v.scale + v.oy}, {x: 100, y: 50});
   assert.equal(zoomAt(v, 10, 100, 50).scale, 4);
   assert.equal(zoomAt(v, 0.01, 100, 50).scale, 1);
 });

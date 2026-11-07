@@ -1,9 +1,10 @@
 import {createSetup, setOwner} from '../core/match-state.js';
+import {kickoff} from '../core/scenarios.js';
 import {FORMATS} from '../core/match-rules.js';
 import {stateAt, duration} from '../core/simulation-engine.js';
-import {addEvent, removeEvent} from '../core/event-engine.js';
+import {addEvent, updateEvent, removeEvent} from '../core/event-engine.js';
 import {validateEvents} from '../core/action-validator.js';
-import {createAnnotations, addAnnotation, clearAnnotations, serializeAnnotations, restoreAnnotations} from '../core/annotation-state.js';
+import {createAnnotations, addAnnotation, clearAnnotations, setHidden, setTimeWindow, removeAnnotation, saveView, applyView, serializeAnnotations, restoreAnnotations} from '../core/annotation-state.js';
 import {createReplay} from '../replay/replay-engine.js';
 import {nextEventTime, prevEventTime} from '../replay/timeline.js';
 import {createHistory} from '../replay/snapshot-manager.js';
@@ -18,6 +19,9 @@ import {createDrawingController} from '../interaction/drawing-controller.js';
 import {createToolbar} from './toolbar.js';
 import {createTimelinePanel} from './timeline-panel.js';
 import {createAnalysisPanel} from './analysis-panel.js';
+import {createEventEditor} from './event-editor.js';
+import {createAnnotationPanel} from './annotation-panel.js';
+import {matchFlow} from '../core/match-flow.js';
 
 const FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
@@ -120,6 +124,11 @@ function render() {
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
     canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
+  editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
+  annoPanel.update({items: annos.items, views: annos.views, t});
+  const f = matchFlow(setup, events);
+  flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
+    ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '');
   analysisPanel.update(analyze({state: s, events, aspect, t, duration: duration(events),
     stateAt: x => stateAt(setup, events, x)}));
 }
@@ -258,6 +267,15 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
     replay.seek(0);
     invalidate();
   },
+  onKickoff: () => {
+    if ((events.length || annos.items.length) && !confirm('Replace the current scenario with a kick-off?')) return;
+    ({setup, events} = kickoff(FORMAT));
+    annos = createAnnotations();
+    selectedId = null;
+    commit();
+    replay.seek(0);
+    invalidate();
+  },
   onDeleteEvent: deleteSelected,
   onClearDrawings: () => { annos = clearAnnotations(annos); commit(); invalidate(); },
   onToggleDrawings: v => { hideDrawings = v; invalidate(); }
@@ -281,6 +299,28 @@ const timeline = createTimelinePanel(document.getElementById('timeline'), {
   onRedo: () => apply(history.redo())
 });
 const analysisPanel = createAnalysisPanel(document.getElementById('analysis'));
+const flowEl = document.getElementById('flow');
+const editor = createEventEditor(document.getElementById('editor'), {
+  onChange: (id, patch) => {
+    const res = updateEvent(events, id, patch, mode, setup);
+    if (res.events === events) say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Edit rejected.');
+    else { events = res.events; commit(); }
+    invalidate();
+  }
+});
+const annoPanel = createAnnotationPanel(document.getElementById('annotations'), {
+  onChange: i => {
+    try {
+      if (i.kind === 'toggle') annos = setHidden(annos, i.id, i.hidden);
+      else if (i.kind === 'window') annos = setTimeWindow(annos, i.id, i.from, i.to);
+      else if (i.kind === 'delete') annos = removeAnnotation(annos, i.id);
+      else if (i.kind === 'saveView') annos = saveView(annos, i.name, i.t);
+      else if (i.kind === 'applyView') { annos = applyView(annos, i.name); if (i.t !== null) replay.seek(i.t); }
+      commit();
+    } catch (e) { say(e.message); }
+    invalidate();
+  }
+});
 
 window.addEventListener('keydown', e => {
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;

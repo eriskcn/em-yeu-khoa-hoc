@@ -1,5 +1,5 @@
 // Format label, Edit/Simulate switch, tool groups and a few actions. No state of its own.
-export function createToolbar(root, {label, groups, mode, onTool, onMode, onReset, onDeleteEvent, onClearDrawings, onToggleDrawings}) {
+export function createToolbar(root, {label, groups, mode, onTool, onMode, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings}) {
   const el = (tag, parent, text, cls) => {
     const e = document.createElement(tag);
     if (text) e.textContent = text;
@@ -16,6 +16,7 @@ export function createToolbar(root, {label, groups, mode, onTool, onMode, onRese
   sel.addEventListener('change', () => onMode(sel.value));
   const act = (text, fn) => el('button', row, text).addEventListener('click', fn);
   act('Reset', onReset);
+  act('Kick-off', onKickoff);
   act('Delete event', onDeleteEvent);
   act('Clear drawings', onClearDrawings);
   const hide = el('label', row, 'Hide drawings');

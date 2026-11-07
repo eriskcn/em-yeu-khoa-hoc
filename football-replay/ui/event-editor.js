@@ -1,5 +1,6 @@
 const CSS = `
 .ee-panel{display:flex;flex-direction:column;gap:8px;font:14px sans-serif}
+.ee-panel[hidden]{display:none}
 .ee-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .ee-panel label{display:flex;flex-direction:column;gap:2px}
 .ee-panel button,.ee-panel select,.ee-panel input{min-height:40px;min-width:40px;padding:0 10px;font:inherit}

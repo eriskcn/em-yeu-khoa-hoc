@@ -61,3 +61,30 @@ Splitting into multiple files/build step, video/GIF export, multiplayer/sharing 
 
 ## Notes
 - Task 2.1 fixes a data format other features depend on; consider an ADR only if the format must stay backward compatible. Not created.
+
+## Audit backlog (2026-11-07, second audit; user-approved as GitHub issues)
+Goal added by the audit: the tool becomes a three-phase Football Scenario Reconstruction and Tactical Analysis Tool (Setup → Simulation → Analysis). Items are tracked as GitHub issues; status here mirrors them. Nothing below is started.
+
+| ID | Issue | Task | Priority | Depends on | Status |
+|----|-------|------|----------|-----------|--------|
+| 10.1 | #5 | Possession model; fix ball teleport | P0 | none | Not Started |
+| 10.2 | #6 | Delete event leaves ghost ball move | P0 | none | Not Started |
+| 10.3 | #7 | Overlapping ball events flagged | P0 | none | Not Started |
+| 10.4 | #8 | Rule checks + Edit / Simulate mode | P0 | #5 | Not Started |
+| 10.5 | #9 | Load old rectangle areas (convert to polygon) | P0 | none | Not Started |
+| 11.1 | #17 | Split sim logic + automated tests | P1 | none (do early; guards #5–#8) | Not Started |
+| 11.2 | #10 | Three-phase workflow shell | P1 | #5, #8 | Not Started |
+| 11.3 | #11 | Phase 1 setup (pitch, formations, roles, possession) | P1 | #10 | Not Started |
+| 11.4 | #12 | Phase 2 events (edit, reorder, new event types) | P1 | #5 | Not Started |
+| 11.5 | #13 | Replay controls (frame step, prev/next, from event) | P1 | none | Not Started |
+| 11.6 | #14 | Mobile layout and tap targets | P1 | none | Not Started |
+| 12.1 | #15 | More annotation tools | P2 | none | Not Started |
+| 12.2 | #16 | Time-linked annotations, views, compare | P2 | #10 | Not Started |
+| 12.3 | #18 | Touch pinch / pan / multi-select | P2 | #14 | Not Started |
+| 12.4 | #19 | Accessibility | P2 | none | Not Started |
+| 12.5 | #20 | Match rules (out of play, goals, restarts, offside, subs) | P2 | #5, #11 | Not Started |
+| 12.6 | #21 | Analysis metrics | P2 | #5 for possession stats | Not Started |
+| 13.1 | #22 | Redraw loop idles | P3 | none | Not Started |
+| 13.2 | #23 | Undo history: coalesce colour, keep time | P3 | none | Not Started |
+
+Success criteria: each issue's acceptance line passes and, where #17 exists, is covered by a test.

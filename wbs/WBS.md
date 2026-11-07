@@ -88,3 +88,19 @@ Goal added by the audit: the tool becomes a three-phase Football Scenario Recons
 | 13.2 | #23 | Undo history: coalesce colour, keep time | P3 | none | Not Started |
 
 Success criteria: each issue's acceptance line passes and, where #17 exists, is covered by a test.
+
+## Rewrite (branch `refactor/football-replay-modular`, 2026-11-07; user-approved)
+Plan: [docs/football-replay-plan.md](../docs/football-replay-plan.md). PoC kept in `football-replay-poc/`. 7v7 first; 5v5 and 11v11 after.
+
+| ID | Task | Issues | Status |
+|----|------|--------|--------|
+| R0 | Back up PoC to `football-replay-poc/` | — | Completed |
+| R1 | Write rewrite plan | — | Completed |
+| R2 | M0: scaffold folders, 7v7 setup render + drag, Node test | #17, #22 | In Progress |
+| R3 | M1: 7v7 events, possession, rule checks | #5–#8, #12 | Not Started |
+| R4 | M2: replay and undo | #13, #23 | Not Started |
+| R5 | M3: annotations | #15, #16 | Not Started |
+| R6 | M4: analysis | #21 | Not Started |
+| R7 | M5: 7v7 match rules | #20 | Not Started |
+| R8 | M6: mobile, touch, a11y, i18n | #14, #18, #19 | Not Started |
+| R9 | M7: extend to 5v5 and 11v11 | — | Not Started |

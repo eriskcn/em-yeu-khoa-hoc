@@ -96,7 +96,7 @@ Plan: [docs/football-replay-plan.md](../docs/football-replay-plan.md). PoC kept 
 |----|------|--------|--------|
 | R0 | Back up PoC to `football-replay-poc/` | — | Completed |
 | R1 | Write rewrite plan | — | Completed |
-| R2 | M0: scaffold folders, 7v7 setup render + drag, Node test | #17, #22 | In Progress |
+| R2 | M0: scaffold folders, 7v7 setup render + drag, Node test | #17, #22 | Completed |
 | R3 | M1: 7v7 events, possession, rule checks | #5–#8, #12 | Not Started |
 | R4 | M2: replay and undo | #13, #23 | Not Started |
 | R5 | M3: annotations | #15, #16 | Not Started |

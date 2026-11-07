@@ -102,9 +102,12 @@ Plan: [docs/football-replay-plan.md](../docs/football-replay-plan.md). PoC kept 
 | R5 | M3: annotations | #15, #16 | Completed (see gaps) |
 | R6 | M4: analysis | #21 | Completed (see gaps) |
 | R7 | M5: 7v7 match rules | #20 | Completed (see gaps) |
-| R8 | M6: mobile, touch, a11y, i18n | #14, #18, #19 | In Progress (layout, a11y done; touch, i18n not started) |
+| R8 | M6: mobile, touch, a11y, i18n | #14, #18, #19 | In Progress (layout, a11y, pinch/pan done; multi-select, context menu, i18n not started) |
 | R9 | M7: extend to 5v5 and 11v11 | — | Completed (see gaps) |
 
 Done since: event editor (#12), annotation panel with windows and saved views (#16), match flow (goals, out of play, restarts, subs), 5v5/11v11 with an 11v11 offside warning, Substitute tool, mobile layout and ARIA labels.
 
 Gaps left (tracked in the issues, not done): #16 compare-with-setup overlay; #12 curve/height editing and goalkeeper events; #20 free kicks, penalties, half-time, and the bench roster (a sub'd-on player cannot be subbed off); 5v5/11v11 pitch aspect and goal sizes are estimates; offside ignores level-with and edit mode; #14 tap-target sizes not measured; #18 touch pinch/pan and i18n not started; analysis possession share counts a ball in transit as loose; issue messages show internal player ids, not shirt numbers; tackle events exist in core but have no tool.
+
+Done since M7: Setup/Simulation/Analysis phase shell (#10), formation selects (#11), scenario Export/Import incl. legacy rectangle areas (#9), defensive line / press zone / lane tools and setup ghost (#15, #16), pinch-zoom and two-finger pan (#18, shared view in `rendering/pitch-renderer.js`), goalkeeper `save` and half/full-time in core (no UI tool yet).
+Open gaps: flip sides (core exists; goals and kick-off assume team 1 attacks left), pitch size, UI for save/penalty/half-time (#12, #20), multi-select and context menu (#18), i18n, player/ball radius ignore zoom.

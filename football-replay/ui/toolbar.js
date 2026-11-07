@@ -1,5 +1,5 @@
 // Format label, Edit/Simulate switch, tool groups and a few actions. No state of its own.
-export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings}) {
+export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings, onToggleGhost, onResetView, onExport, onImport, onPhase, phases, phase}) {
   const el = (tag, parent, text, cls) => {
     const e = document.createElement(tag);
     if (text) e.textContent = text;
@@ -23,23 +23,55 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
   act('Kick-off', onKickoff);
   act('Delete event', onDeleteEvent);
   act('Clear drawings', onClearDrawings);
+  act('Reset zoom', onResetView);
+  act('Export', onExport);
+  const file = el('input', row);
+  file.type = 'file';
+  file.accept = '.json,application/json';
+  file.hidden = true;
+  file.addEventListener('change', async () => { if (file.files[0]) onImport(await file.files[0].text()); file.value = ''; });
+  act('Import', () => file.click());
   const hide = el('label', row, 'Hide drawings');
   const cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.addEventListener('change', () => onToggleDrawings(cb.checked));
   hide.prepend(cb);
+  const ghost = el('label', row, 'Show setup ghost');
+  const gb = document.createElement('input');
+  gb.type = 'checkbox';
+  gb.addEventListener('change', () => onToggleGhost(gb.checked));
+  ghost.prepend(gb);
 
   const buttons = {};
+  const phaseRow = el('div', root, null, 'tb-row');
+  el('span', phaseRow, 'Phase', 'tb-group');
+  const phaseBtns = phases.map(([id, text]) => {
+    const b = el('button', phaseRow, text);
+    b.type = 'button';
+    b.addEventListener('click', () => onPhase(id));
+    return [id, b];
+  });
   const tools = el('div', root, null, 'tb-row');
+  const wraps = [];
   groups.forEach(g => {
-    el('span', tools, g.name, 'tb-group');
+    const wrap = el('span', tools, null, 'tb-wrap');
+    wraps.push([g.phase, wrap]);
+    el('span', wrap, g.name, 'tb-group');
     g.tools.forEach(([id, text]) => {
-      const b = el('button', tools, text, 'tool');
+      const b = el('button', wrap, text, 'tool');
       b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', () => onTool(id));
       buttons[id] = b;
     });
   });
-  return {setTool: id => Object.entries(buttons).forEach(([k, b]) => { b.classList.toggle('on', k === id); b.setAttribute('aria-pressed', String(k === id)); })};
+  const setPhase = id => {
+    wraps.forEach(([ph, w]) => { w.hidden = ph !== id; });
+    phaseBtns.forEach(([k, b]) => b.setAttribute('aria-pressed', String(k === id)));
+  };
+  setPhase(phase);
+  return {
+    setPhase,
+    setFormat: f => { fsel.value = f; },
+    setTool: id => Object.entries(buttons).forEach(([k, b]) => { b.classList.toggle('on', k === id); b.setAttribute('aria-pressed', String(k === id)); })};
 }

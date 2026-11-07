@@ -3,13 +3,16 @@ export const PAD = 28;
 // Normalised (0..1) <-> canvas pixels. The only place that knows about padding.
 // Optional trailing view {scale, ox, oy} (zoom/pan) is applied after padding.
 const ID = {scale: 1, ox: 0, oy: 0};
-export const toPx = (p, w, h, v = ID) => ({
+// shortcut: one shared current view so every toPx/toNorm caller follows zoom/pan; fine while there is one canvas.
+let cur = ID;
+export const setView = v => { cur = v; };
+export const toPx = (p, w, h, v = cur) => ({
   x: (PAD + p.x * (w - 2 * PAD)) * v.scale + v.ox, y: (PAD + p.y * (h - 2 * PAD)) * v.scale + v.oy});
-export const toNorm = (q, w, h, v = ID) => ({
+export const toNorm = (q, w, h, v = cur) => ({
   x: ((q.x - v.ox) / v.scale - PAD) / (w - 2 * PAD), y: ((q.y - v.oy) / v.scale - PAD) / (h - 2 * PAD)});
 export const playerRadius = w => Math.max(10, w * 0.024);
 
-export function drawPitch(ctx, w, h, view = ID) {
+export function drawPitch(ctx, w, h, view = cur) {
   const x0 = PAD, y0 = PAD, pw = w - 2 * PAD, ph = h - 2 * PAD;
   ctx.fillStyle = '#166534';
   ctx.fillRect(0, 0, w, h);

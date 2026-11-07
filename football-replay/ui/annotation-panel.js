@@ -1,7 +1,7 @@
 const CSS = `
 .ap-panel{display:flex;flex-direction:column;gap:8px;font:14px sans-serif}
 .ap-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.ap-panel button,.ap-panel input{min-height:40px;min-width:40px;padding:0 8px;font:inherit}
+.ap-panel button,.ap-panel input{min-height:44px;min-width:44px;padding:0 8px;font:inherit}
 .ap-panel input[type=number]{width:5.5em}
 .ap-panel input[type=text]{flex:1;min-width:8em}
 .ap-item{border-bottom:1px solid #0002;padding-bottom:6px}

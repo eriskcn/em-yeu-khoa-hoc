@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -47,15 +47,15 @@ details li{margin:4px 0}
     <h1 data-i18n="title"></h1>
     <div class="row lang" style="margin:0">
       <a href="../" class="back" data-i18n="back"></a>
-      <button data-lang="en">EN</button><button data-lang="vi" class="on">VI</button>
+      <button data-lang="en" class="on">EN</button><button data-lang="vi">VI</button>
     </div>
   </header>
 
   <div class="row">
     <select id="mode">
       <option value="5" data-i18n="mode5"></option>
-      <option value="7" data-i18n="mode7"></option>
-      <option value="11" selected data-i18n="mode11"></option>
+      <option value="7" selected data-i18n="mode7"></option>
+      <option value="11" data-i18n="mode11"></option>
     </select>
     <label><span data-i18n="colA"></span> <input type="color" id="colA" value="#1e6fd9"></label>
     <label><span data-i18n="colB"></span> <input type="color" id="colB" value="#e03c31"></label>
@@ -77,6 +77,10 @@ details li{margin:4px 0}
     <button class="tool" data-tool="block"><span data-i18n="tool_block"></span><small>B</small></button>
     <button class="tool" data-tool="duel"><span data-i18n="tool_duel"></span><small>G</small></button>
     <button class="tool" data-tool="aerial"><span data-i18n="tool_aerial"></span><small>A</small></button>
+    <button class="tool" data-tool="arrow"><span data-i18n="tool_arrow"></span><small>W</small></button>
+    <button class="tool" data-tool="line"><span data-i18n="tool_line"></span><small>L</small></button>
+    <button class="tool" data-tool="area"><span data-i18n="tool_area"></span><small>R</small></button>
+    <button id="clearDraw" data-i18n="clearDraw"></button>
   </div>
 
   <div class="status" id="status"></div>
@@ -150,7 +154,8 @@ const TYPE_COLOR = {pass:'#22c55e',cross:'#06b6d4',shot:'#f97316',dribble:'#a855
 const FLIGHT = new Set(['pass', 'cross', 'shot']);
 const BALL_EV = new Set(['pass', 'cross', 'shot', 'dribble', 'tackle', 'block', 'aerial']);
 const CONTACT = new Set(['tackle', 'duel', 'aerial', 'block']);
-const KEYS = {v:'move',p:'pass',c:'cross',s:'shot',d:'dribble',t:'tackle',b:'block',g:'duel',a:'aerial'};
+const KEYS = {v:'move',p:'pass',c:'cross',s:'shot',d:'dribble',t:'tackle',b:'block',g:'duel',a:'aerial',w:'arrow',l:'line',r:'area'};
+const SHAPES = new Set(['arrow', 'line', 'area']);
 
 const I18N = {
   vi: {
@@ -160,7 +165,8 @@ const I18N = {
     colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', undo: 'Hoàn tác', redo: 'Làm lại', export: 'Xuất', import: 'Nhập',
     st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
     tool_move: 'Di chuyển', tool_pass: 'Chuyền', tool_cross: 'Tạt bóng', tool_shot: 'Sút',
-    tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không',
+    tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không', tool_arrow: 'Mũi tên', tool_line: 'Đường kẻ', tool_area: 'Vùng', clearDraw: 'Xóa nét vẽ',
+    st_arrow: 'Mũi tên: kéo trên sân để vẽ. Vẽ được cả khi đang tạm dừng.', st_line: 'Đường kẻ: kéo trên sân để vẽ.', st_area: 'Vùng: kéo để vẽ một vùng chữ nhật.',
     st_move: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Khung hình được tạo tự động tại thời điểm hiện tại.',
     st_pass: 'Chuyền: nhấn người thực hiện, rồi nhấn người nhận.',
     st_cross: 'Tạt bóng: nhấn cầu thủ tạt, rồi nhấn người nhận.',
@@ -198,7 +204,8 @@ const I18N = {
     colA: 'Team A', colB: 'Team B', reset: 'Reset formation', undo: 'Undo', redo: 'Redo', export: 'Export', import: 'Import',
     st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
     tool_move: 'Move', tool_pass: 'Pass', tool_cross: 'Cross', tool_shot: 'Shot',
-    tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial',
+    tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial', tool_arrow: 'Arrow', tool_line: 'Line', tool_area: 'Area', clearDraw: 'Clear drawings',
+    st_arrow: 'Arrow: drag on the pitch to draw. Works while paused too.', st_line: 'Line: drag on the pitch to draw.', st_area: 'Area: drag to draw a rectangular zone.',
     st_move: 'Drag players or the ball to position them. Keyframes are created automatically at the current time.',
     st_pass: 'Pass: click the passer, then the receiver.',
     st_cross: 'Cross: click the crosser, then the receiver.',
@@ -231,7 +238,7 @@ const I18N = {
   }
 };
 
-let lang = 'vi', mode = '11', tokens = [], kfs = [], events = [], evSeq = 0;
+let lang = 'en', mode = '7', tokens = [], kfs = [], events = [], shapes = [], evSeq = 0, drawing = null;
 let tool = 'move', pendingActor = null, selEvent = null, mpos = null, drag = null, scrubbing = false;
 let statusKey = 'st_move', lastL = 0, W = 0, H = 0, R = 12;
 const defaults = JSON.parse(JSON.stringify(TYPE_DEFAULTS));
@@ -297,6 +304,7 @@ function build() {
   });
   kfs = [{t: 0, p: pts}];
   events = [];
+  shapes = [];
   selEvent = null;
   pendingActor = null;
   state.playing = false;
@@ -351,7 +359,8 @@ function serialize() {
   return {
     v: 1, mode, colA: $('colA').value, colB: $('colB').value, evSeq,
     kfs: kfs.map(k => ({t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))})),
-    events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)}))
+    events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)})),
+    shapes: shapes.map(h => ({...h}))
   };
 }
 
@@ -374,6 +383,9 @@ function restore(d) {
     if (!ok) throw new Error('bad event');
     return {...e, endKf: e.endKf === -1 ? null : k2[e.endKf]};
   });
+  const pt = q => q && num(q.x) && num(q.y);
+  const sh = d.shapes === undefined ? [] : d.shapes;
+  if (!Array.isArray(sh) || !sh.every(h => SHAPES.has(h.type) && pt(h.a) && pt(h.b))) throw new Error('bad shape');
   mode = d.mode;
   $('mode').value = mode;
   $('colA').value = d.colA;
@@ -382,6 +394,7 @@ function restore(d) {
   build();
   kfs = k2;
   events = e2;
+  shapes = sh.map(h => ({type: h.type, a: {x: h.a.x, y: h.a.y}, b: {x: h.b.x, y: h.b.y}}));
   evSeq = d.evSeq;
   applyTime(0);
   renderTimeline();
@@ -796,10 +809,37 @@ function drawBall(tk) {
   ctx.fill();
 }
 
+function drawShape(h) {
+  const a = toPx(h.a), b = toPx(h.b);
+  ctx.save();
+  ctx.strokeStyle = ctx.fillStyle = '#facc15';
+  ctx.lineWidth = 3;
+  if (h.type === 'area') {
+    ctx.globalAlpha = .25;
+    ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  } else {
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    if (h.type === 'arrow') {
+      const ang = Math.atan2(b.y - a.y, b.x - a.x), L = 14;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - L * Math.cos(ang - .45), b.y - L * Math.sin(ang - .45));
+      ctx.lineTo(b.x - L * Math.cos(ang + .45), b.y - L * Math.sin(ang + .45));
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function draw() {
   const P = interp(state.t);
   ctx.clearRect(0, 0, W, H);
   drawField();
+  shapes.forEach(drawShape);
+  if (drawing) drawShape(drawing);
 
   if (kfs.length > 1) {
     tokens.forEach(tk => {
@@ -866,6 +906,10 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+function normPx(pt) {
+  return {x: clamp((pt.x - PAD) / (W - 2 * PAD), 0, 1), y: clamp((pt.y - PAD) / (H - 2 * PAD), 0, 1)};
+}
+
 function localPx(e) {
   const r = cvs.getBoundingClientRect();
   return {x: e.clientX - r.left, y: e.clientY - r.top};
@@ -882,6 +926,13 @@ function hit(pt) {
 cvs.addEventListener('pointerdown', e => {
   pause();
   const pt = localPx(e), tk = hit(pt);
+
+  if (SHAPES.has(tool)) {
+    cvs.setPointerCapture(e.pointerId);
+    const n = normPx(pt);
+    drawing = {type: tool, a: n, b: n, pid: e.pointerId};
+    return;
+  }
 
   if (tool === 'move') {
     if (!tk) { selEvent = null; renderTimeline(); updateEventPanel(); return; }
@@ -915,6 +966,7 @@ cvs.addEventListener('pointerdown', e => {
 
 cvs.addEventListener('pointermove', e => {
   mpos = localPx(e);
+  if (drawing && e.pointerId === drawing.pid) { drawing.b = normPx(mpos); return; }
   if (!drag || e.pointerId !== drag.pid) return;
   const pt = localPx(e);
   const x = clamp((pt.x - PAD) / (W - 2 * PAD), 0, 1);
@@ -928,6 +980,15 @@ cvs.addEventListener('pointermove', e => {
 cvs.addEventListener('pointerleave', () => { mpos = null; });
 
 function endDrag(e) {
+  if (drawing && e.pointerId === drawing.pid) {
+    const {a, b} = drawing, type = drawing.type;
+    drawing = null;
+    if (Math.hypot((b.x - a.x) * W, (b.y - a.y) * H) > 6) {
+      shapes.push({type, a, b});
+      scheduleSave();
+    }
+    return;
+  }
   if (drag && e.pointerId === drag.pid) { drag = null; scheduleSave(); }
 }
 cvs.addEventListener('pointerup', endDrag);
@@ -952,7 +1013,8 @@ $('pdel').addEventListener('click', deleteEvent);
 $('pdur').addEventListener('input', e => setParam('dur', Math.max(0.2, +e.target.value)));
 $('pbend').addEventListener('input', e => setParam('bend', +e.target.value));
 $('plift').addEventListener('input', e => setParam('lift', +e.target.value));
-const okToLose = () => (!events.length && kfs.length <= 1) || confirm(T('confirmLose'));
+const okToLose = () => (!events.length && !shapes.length && kfs.length <= 1) || confirm(T('confirmLose'));
+$('clearDraw').addEventListener('click', () => { if (!shapes.length) return; shapes = []; draw(); scheduleSave(); });
 $('reset').addEventListener('click', () => { if (!okToLose()) return; build(); scheduleSave(); });
 $('export').addEventListener('click', () => {
   const a = document.createElement('a');

@@ -1,14 +1,21 @@
 export const PAD = 28;
 
 // Normalised (0..1) <-> canvas pixels. The only place that knows about padding.
-export const toPx = (p, w, h) => ({x: PAD + p.x * (w - 2 * PAD), y: PAD + p.y * (h - 2 * PAD)});
-export const toNorm = (q, w, h) => ({x: (q.x - PAD) / (w - 2 * PAD), y: (q.y - PAD) / (h - 2 * PAD)});
+// Optional trailing view {scale, ox, oy} (zoom/pan) is applied after padding.
+const ID = {scale: 1, ox: 0, oy: 0};
+export const toPx = (p, w, h, v = ID) => ({
+  x: (PAD + p.x * (w - 2 * PAD)) * v.scale + v.ox, y: (PAD + p.y * (h - 2 * PAD)) * v.scale + v.oy});
+export const toNorm = (q, w, h, v = ID) => ({
+  x: ((q.x - v.ox) / v.scale - PAD) / (w - 2 * PAD), y: ((q.y - v.oy) / v.scale - PAD) / (h - 2 * PAD)});
 export const playerRadius = w => Math.max(10, w * 0.024);
 
-export function drawPitch(ctx, w, h) {
+export function drawPitch(ctx, w, h, view = ID) {
   const x0 = PAD, y0 = PAD, pw = w - 2 * PAD, ph = h - 2 * PAD;
   ctx.fillStyle = '#166534';
   ctx.fillRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
   for (let i = 0; i < 10; i += 2) {
     ctx.fillStyle = 'rgba(255,255,255,.05)';
     ctx.fillRect(x0 + i * pw / 10, y0, pw / 10, ph);
@@ -24,4 +31,5 @@ export function drawPitch(ctx, w, h) {
   ctx.strokeRect(x0 + pw - bw, y0 + (ph - bh) / 2, bw, bh);
   ctx.strokeRect(x0 - 6, y0 + (ph - gw) / 2, 6, gw);
   ctx.strokeRect(x0 + pw, y0 + (ph - gw) / 2, 6, gw);
+  ctx.restore();
 }

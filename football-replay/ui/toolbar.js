@@ -1,5 +1,5 @@
 // Format label, Edit/Simulate switch, tool groups and a few actions. No state of its own.
-export function createToolbar(root, {label, groups, mode, onTool, onMode, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings}) {
+export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings}) {
   const el = (tag, parent, text, cls) => {
     const e = document.createElement(tag);
     if (text) e.textContent = text;
@@ -8,7 +8,11 @@ export function createToolbar(root, {label, groups, mode, onTool, onMode, onRese
     return e;
   };
   const row = el('div', root, null, 'tb-row');
-  el('span', row, label, 'format');
+  const fsel = el('select', row, null, 'format');
+  fsel.setAttribute('aria-label', 'Match format');
+  formats.forEach(([v, t]) => { el('option', fsel, t).value = v; });
+  fsel.value = format;
+  fsel.addEventListener('change', () => { fsel.value = onFormat(Number(fsel.value)); });
   const sel = el('select', row);
   sel.setAttribute('aria-label', 'Rule mode');
   [['simulate', 'Simulate (rules enforced)'], ['edit', 'Edit (free)']].forEach(([v, t]) => { el('option', sel, t).value = v; });

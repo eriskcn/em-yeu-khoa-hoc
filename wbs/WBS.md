@@ -101,8 +101,10 @@ Plan: [docs/football-replay-plan.md](../docs/football-replay-plan.md). PoC kept 
 | R4 | M2: replay and undo | #13, #23 | Completed (see gaps) |
 | R5 | M3: annotations | #15, #16 | Completed (see gaps) |
 | R6 | M4: analysis | #21 | Completed (see gaps) |
-| R7 | M5: 7v7 match rules | #20 | Not Started |
-| R8 | M6: mobile, touch, a11y, i18n | #14, #18, #19 | Not Started |
-| R9 | M7: extend to 5v5 and 11v11 | — | Not Started |
+| R7 | M5: 7v7 match rules | #20 | Completed (see gaps) |
+| R8 | M6: mobile, touch, a11y, i18n | #14, #18, #19 | In Progress (layout, a11y done; touch, i18n not started) |
+| R9 | M7: extend to 5v5 and 11v11 | — | Completed (see gaps) |
 
-Gaps left after wiring R3–R6 (tracked in the issues, not done): #12 no UI to edit an event's actor/target/start time or to reorder (core `updateEvent` exists); #16 time windows, per-item hide and saved views exist in `core/annotation-state.js` but have no UI; analysis possession share counts a ball in transit as loose; issue messages show internal player ids, not shirt numbers; tackle events exist in core but have no tool.
+Done since: event editor (#12), annotation panel with windows and saved views (#16), match flow (goals, out of play, restarts, subs), 5v5/11v11 with an 11v11 offside warning, Substitute tool, mobile layout and ARIA labels.
+
+Gaps left (tracked in the issues, not done): #16 compare-with-setup overlay; #12 curve/height editing and goalkeeper events; #20 free kicks, penalties, half-time, and the bench roster (a sub'd-on player cannot be subbed off); 5v5/11v11 pitch aspect and goal sizes are estimates; offside ignores level-with and edit mode; #14 tap-target sizes not measured; #18 touch pinch/pan and i18n not started; analysis possession share counts a ball in transit as loose; issue messages show internal player ids, not shirt numbers; tackle events exist in core but have no tool.

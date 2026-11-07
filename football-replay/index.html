@@ -155,7 +155,7 @@ const FLIGHT = new Set(['pass', 'cross', 'shot']);
 const BALL_EV = new Set(['pass', 'cross', 'shot', 'dribble', 'tackle', 'block', 'aerial']);
 const CONTACT = new Set(['tackle', 'duel', 'aerial', 'block']);
 const KEYS = {v:'move',p:'pass',c:'cross',s:'shot',d:'dribble',t:'tackle',b:'block',g:'duel',a:'aerial',w:'arrow',l:'line',r:'area'};
-const SHAPES = new Set(['arrow', 'line', 'area']);
+const SHAPES = new Set(['arrow', 'line']); // two-point drag tools; 'area' is a click-built polygon
 
 const I18N = {
   vi: {
@@ -166,7 +166,7 @@ const I18N = {
     st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
     tool_move: 'Di chuyển', tool_pass: 'Chuyền', tool_cross: 'Tạt bóng', tool_shot: 'Sút',
     tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không', tool_arrow: 'Mũi tên', tool_line: 'Đường kẻ', tool_area: 'Vùng', clearDraw: 'Xóa nét vẽ',
-    st_arrow: 'Mũi tên: kéo trên sân để vẽ. Vẽ được cả khi đang tạm dừng.', st_line: 'Đường kẻ: kéo trên sân để vẽ.', st_area: 'Vùng: kéo để vẽ một vùng chữ nhật.',
+    st_arrow: 'Mũi tên: kéo trên sân để vẽ. Vẽ được cả khi đang tạm dừng.', st_line: 'Đường kẻ: kéo trên sân để vẽ.', st_area: 'Vùng: nhấn để đặt các điểm; nhấn lại điểm đầu (hoặc nhấn đúp) để khép kín.',
     st_move: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Khung hình được tạo tự động tại thời điểm hiện tại.',
     st_pass: 'Chuyền: nhấn người thực hiện, rồi nhấn người nhận.',
     st_cross: 'Tạt bóng: nhấn cầu thủ tạt, rồi nhấn người nhận.',
@@ -205,7 +205,7 @@ const I18N = {
     st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
     tool_move: 'Move', tool_pass: 'Pass', tool_cross: 'Cross', tool_shot: 'Shot',
     tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial', tool_arrow: 'Arrow', tool_line: 'Line', tool_area: 'Area', clearDraw: 'Clear drawings',
-    st_arrow: 'Arrow: drag on the pitch to draw. Works while paused too.', st_line: 'Line: drag on the pitch to draw.', st_area: 'Area: drag to draw a rectangular zone.',
+    st_arrow: 'Arrow: drag on the pitch to draw. Works while paused too.', st_line: 'Line: drag on the pitch to draw.', st_area: 'Area: click to place points; click the first point (or double-click) to close the shape.',
     st_move: 'Drag players or the ball to position them. Keyframes are created automatically at the current time.',
     st_pass: 'Pass: click the passer, then the receiver.',
     st_cross: 'Cross: click the crosser, then the receiver.',
@@ -238,7 +238,7 @@ const I18N = {
   }
 };
 
-let lang = 'en', mode = '7', tokens = [], kfs = [], events = [], shapes = [], evSeq = 0, drawing = null;
+let lang = 'en', mode = '7', tokens = [], kfs = [], events = [], shapes = [], evSeq = 0, drawing = null, poly = null;
 let tool = 'move', pendingActor = null, selEvent = null, mpos = null, drag = null, scrubbing = false;
 let statusKey = 'st_move', lastL = 0, W = 0, H = 0, R = 12;
 const defaults = JSON.parse(JSON.stringify(TYPE_DEFAULTS));
@@ -360,7 +360,7 @@ function serialize() {
     v: 1, mode, colA: $('colA').value, colB: $('colB').value, evSeq,
     kfs: kfs.map(k => ({t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))})),
     events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)})),
-    shapes: shapes.map(h => ({...h}))
+    shapes: JSON.parse(JSON.stringify(shapes))
   };
 }
 
@@ -385,7 +385,8 @@ function restore(d) {
   });
   const pt = q => q && num(q.x) && num(q.y);
   const sh = d.shapes === undefined ? [] : d.shapes;
-  if (!Array.isArray(sh) || !sh.every(h => SHAPES.has(h.type) && pt(h.a) && pt(h.b))) throw new Error('bad shape');
+  const shapeOk = h => h && (h.type === 'area' ? Array.isArray(h.pts) && h.pts.length >= 3 && h.pts.every(pt) : SHAPES.has(h.type) && pt(h.a) && pt(h.b));
+  if (!Array.isArray(sh) || !sh.every(shapeOk)) throw new Error('bad shape');
   mode = d.mode;
   $('mode').value = mode;
   $('colA').value = d.colA;
@@ -394,7 +395,7 @@ function restore(d) {
   build();
   kfs = k2;
   events = e2;
-  shapes = sh.map(h => ({type: h.type, a: {x: h.a.x, y: h.a.y}, b: {x: h.b.x, y: h.b.y}}));
+  shapes = sh.map(h => h.type === 'area' ? {type: 'area', pts: h.pts.map(q => ({x: q.x, y: q.y}))} : {type: h.type, a: {x: h.a.x, y: h.a.y}, b: {x: h.b.x, y: h.b.y}});
   evSeq = d.evSeq;
   applyTime(0);
   renderTimeline();
@@ -553,6 +554,7 @@ function deleteKeyHere() {
 function setTool(name) {
   tool = name;
   pendingActor = null;
+  poly = null;
   document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.tool === name));
   cvs.style.cursor = name === 'move' ? 'default' : 'crosshair';
   setStatus('st_' + name);
@@ -810,17 +812,20 @@ function drawBall(tk) {
 }
 
 function drawShape(h) {
-  const a = toPx(h.a), b = toPx(h.b);
   ctx.save();
   ctx.strokeStyle = ctx.fillStyle = '#facc15';
   ctx.lineWidth = 3;
   if (h.type === 'area') {
+    ctx.beginPath();
+    h.pts.forEach((q, i) => { const c = toPx(q); i ? ctx.lineTo(c.x, c.y) : ctx.moveTo(c.x, c.y); });
+    ctx.closePath();
     ctx.globalAlpha = .25;
-    ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    ctx.fill();
     ctx.globalAlpha = 1;
     ctx.setLineDash([6, 4]);
-    ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    ctx.stroke();
   } else {
+    const a = toPx(h.a), b = toPx(h.b);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     if (h.type === 'arrow') {
       const ang = Math.atan2(b.y - a.y, b.x - a.x), L = 14;
@@ -834,12 +839,26 @@ function drawShape(h) {
   ctx.restore();
 }
 
+function drawPoly() {
+  ctx.save();
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  poly.forEach((q, i) => { const c = toPx(q); i ? ctx.lineTo(c.x, c.y) : ctx.moveTo(c.x, c.y); });
+  if (mpos) ctx.lineTo(mpos.x, mpos.y);
+  ctx.stroke();
+  ctx.restore();
+  ring(toPx(poly[0]), 7, '#facc15', 2);
+}
+
 function draw() {
   const P = interp(state.t);
   ctx.clearRect(0, 0, W, H);
   drawField();
   shapes.forEach(drawShape);
   if (drawing) drawShape(drawing);
+  if (poly) drawPoly();
 
   if (kfs.length > 1) {
     tokens.forEach(tk => {
@@ -926,6 +945,17 @@ function hit(pt) {
 cvs.addEventListener('pointerdown', e => {
   pause();
   const pt = localPx(e), tk = hit(pt);
+
+  if (tool === 'area') {
+    const n = normPx(pt), px = q => Math.hypot((q.x - n.x) * W, (q.y - n.y) * H);
+    if (!poly) { poly = [n]; return; }
+    if (poly.length >= 3 && px(poly[0]) < 12 || px(poly[poly.length - 1]) < 6) {
+      if (poly.length >= 3) { shapes.push({type: 'area', pts: poly}); scheduleSave(); poly = null; }
+      return;
+    }
+    poly.push(n);
+    return;
+  }
 
   if (SHAPES.has(tool)) {
     cvs.setPointerCapture(e.pointerId);

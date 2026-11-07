@@ -11,8 +11,14 @@ body{margin:0;font-family:system-ui,"Segoe UI",Roboto,sans-serif;background:#0b1
 header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 h1{font-size:18px;margin:2px 0}
 a.back{color:#e2e8f0;text-decoration:none;font-size:13px;padding:6px 12px;border:1px solid #334155;border-radius:8px;background:#1e293b}
-#toolbar{display:flex;gap:8px;align-items:center;margin:8px 0}
+.tb-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.tb-group{font-size:12px;color:#94a3b8;margin-left:6px}
 .format{font-weight:600;padding:6px 10px;background:#1e3a8a;border-radius:8px}
+select{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px}
+label{font-size:13px;display:flex;align-items:center;gap:4px}
+button.tool.on{background:#2563eb;border-color:#2563eb}
+#status{padding:10px 14px;border-radius:8px;background:#1e3a8a;font-size:14px;min-height:42px;display:flex;align-items:center;margin-top:8px}
+#timeline{margin-top:8px}
 button{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 12px;cursor:pointer}
 button:hover{border-color:#64748b}
 canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:none}
@@ -25,7 +31,10 @@ canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:n
     <a class="back" href="../">← Home</a>
   </header>
   <div id="toolbar"></div>
+  <div id="status" role="status" aria-live="polite"></div>
   <canvas id="pitch"></canvas>
+  <div id="timeline"></div>
+  <div id="analysis"></div>
 </div>
 <script type="module" src="./ui/app.js"></script>
 </body>

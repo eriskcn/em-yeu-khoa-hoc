@@ -97,10 +97,12 @@ Plan: [docs/football-replay-plan.md](../docs/football-replay-plan.md). PoC kept 
 | R0 | Back up PoC to `football-replay-poc/` | — | Completed |
 | R1 | Write rewrite plan | — | Completed |
 | R2 | M0: scaffold folders, 7v7 setup render + drag, Node test | #17, #22 | Completed |
-| R3 | M1: 7v7 events, possession, rule checks | #5–#8, #12 | Not Started |
-| R4 | M2: replay and undo | #13, #23 | Not Started |
-| R5 | M3: annotations | #15, #16 | Not Started |
-| R6 | M4: analysis | #21 | Not Started |
+| R3 | M1: 7v7 events, possession, rule checks | #5–#8, #12 | Completed (see gaps) |
+| R4 | M2: replay and undo | #13, #23 | Completed (see gaps) |
+| R5 | M3: annotations | #15, #16 | Completed (see gaps) |
+| R6 | M4: analysis | #21 | Completed (see gaps) |
 | R7 | M5: 7v7 match rules | #20 | Not Started |
 | R8 | M6: mobile, touch, a11y, i18n | #14, #18, #19 | Not Started |
 | R9 | M7: extend to 5v5 and 11v11 | — | Not Started |
+
+Gaps left after wiring R3–R6 (tracked in the issues, not done): #12 no UI to edit an event's actor/target/start time or to reorder (core `updateEvent` exists); #16 time windows, per-item hide and saved views exist in `core/annotation-state.js` but have no UI; analysis possession share counts a ball in transit as loose; issue messages show internal player ids, not shirt numbers; tackle events exist in core but have no tool.

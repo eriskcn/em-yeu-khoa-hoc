@@ -1,6 +1,6 @@
-import {FORMATS, BALL_TYPES} from './match-rules.js';
+import {FORMATS, GOAL} from './match-rules.js';
 import {setOwner, moveBall} from './match-state.js';
-import {stateAt, duration, malformed} from './simulation-engine.js';
+import {stateAt, duration, malformed, isBallEv} from './simulation-engine.js';
 
 // matchFlow(setup, events) -> {score:[a,b], restarts:[{t, kind, team, at}], substitutions:[{t, team, off, on}]}
 // Pure and deterministic. Semantics:
@@ -17,6 +17,9 @@ import {stateAt, duration, malformed} from './simulation-engine.js';
 //   (initial owner if none).
 // - Substitutions are read from events {type:'sub', t, team, off, on}. stateAt only swaps the shown shirt number
 //   (num override), so positions are unaffected. Accepted in time order up to rules.maxSubs per team; extras dropped.
+// - phase events {type:'phase', kind:'half-time'|'full-time', t} are reported in `periods`; ball movement after the
+//   first full-time is ignored. half-time is only a marker (play is not paused).
+// - A shot saved by the keeper (see resolveBall) never leaves the pitch, so it is not a goal.
 // - Offside is not evaluated (rules.offside is false for 7v7).
 const STEP = .05;
 const EPS = 1e-9;
@@ -26,13 +29,16 @@ const clamp01 = v => Math.min(1, Math.max(0, v));
 export function matchFlow(setup, events) {
   const rules = FORMATS[setup.format];
   const teamOf = id => setup.players.find(p => p.id === id).team;
-  const ballEvs = events.filter(e => !malformed(setup, e) && BALL_TYPES.includes(e.type))
+  const ballEvs = events.filter(e => !malformed(setup, e) && isBallEv(e))
     .sort((a, b) => a.t - b.t || a.id - b.id);
   const score = [0, 0];
   const restarts = [];
+  const periods = events.filter(e => !malformed(setup, e) && e.type === 'phase').sort((a, b) => a.t - b.t)
+    .map(({kind, t}) => ({kind, t}));
+  const end = Math.min(duration(events), ...periods.filter(p => p.kind === 'full-time').map(p => p.t));
   let wasOut = outside(stateAt(setup, events, 0).ball);
 
-  for (let t = STEP; t <= duration(events) + EPS; t += STEP) {
+  for (let t = STEP; t <= end + EPS; t += STEP) {
     const b = stateAt(setup, events, t).ball;
     const isOut = outside(b);
     if (isOut && !wasOut) {
@@ -62,12 +68,13 @@ export function matchFlow(setup, events) {
     .sort((a, b) => a.t - b.t)
     .filter(e => used[e.team] < rules.maxSubs && ++used[e.team])
     .map(({t, team, off, on}) => ({t, team, off, on}));
-  return {score, restarts, substitutions};
+  return {score, restarts, substitutions, periods};
 }
 
 // New setup with the ball at restart.at, owned by the nearest player of restart.team (throw-in, corner, ...).
 export function restartSetup(setup, restart) {
-  const {x, y} = restart.at;
+  // penalty: spot .1 from the centre of the goal the taking team attacks; other kinds (free-kick, ...) use restart.at.
+  const {x, y} = restart.kind === 'penalty' ? {x: GOAL[restart.team].x + (restart.team === 0 ? -.1 : .1), y: .5} : restart.at;
   const near = setup.players.filter(p => p.team === restart.team)
     .reduce((a, b) => (Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a));
   const owned = setOwner(setup, near.id); // setOwner snaps the ball to the player; moveBall drops owner

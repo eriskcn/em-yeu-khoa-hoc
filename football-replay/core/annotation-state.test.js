@@ -80,6 +80,14 @@ test('bad restore throws', () => {
   assert.throws(() => restoreAnnotations('{'));
 });
 
+test('saved view keeps optional time', () => {
+  const s = addAnnotation(createAnnotations(), arrow);
+  assert.equal(saveView(s, 'a').views[0].t, null);
+  const s2 = saveView(s, 'a', 2.5);
+  assert.equal(restoreAnnotations(serializeAnnotations(s2)).views[0].t, 2.5);
+  assert.throws(() => saveView(s, 'a', NaN));
+});
+
 test('saved views apply hidden flags', () => {
   let s = addAnnotation(addAnnotation(createAnnotations(), arrow), arrow);
   s = saveView(setHidden(s, 1, true), 'only2');

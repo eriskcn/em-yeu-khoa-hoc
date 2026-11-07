@@ -51,8 +51,9 @@ export const setTimeWindow = (state, id, from, to) => updateAnnotation(state, id
 export const visibleAt = (state, t) =>
   state.items.filter(a => !a.hidden && (a.from === null || t >= a.from) && (a.to === null || t <= a.to));
 
-export function saveView(state, name) {
-  const view = {name, hiddenIds: state.items.filter(a => a.hidden).map(a => a.id)};
+export function saveView(state, name, t = null) {
+  if (!timeOk(t)) throw new Error('bad view time');
+  const view = {name, t, hiddenIds: state.items.filter(a => a.hidden).map(a => a.id)};
   return {...state, views: [...state.views.filter(v => v.name !== name), view]};
 }
 
@@ -70,7 +71,7 @@ export const serializeAnnotations = state =>
 export function restoreAnnotations(json) {
   const d = JSON.parse(json);
   validateAnnotations(d.items);
-  const viewOk = v => v && typeof v.name === 'string' && Array.isArray(v.hiddenIds) && v.hiddenIds.every(Number.isFinite);
+  const viewOk = v => v && typeof v.name === 'string' && timeOk(v.t ?? null) && Array.isArray(v.hiddenIds) && v.hiddenIds.every(Number.isFinite);
   if (!Array.isArray(d.views) || !d.views.every(viewOk)) throw new Error('bad views');
   const nextId = Math.max(Number.isFinite(d.nextId) ? d.nextId : 0, 1 + Math.max(0, ...d.items.map(a => a.id)));
   return {items: d.items, nextId, views: d.views};

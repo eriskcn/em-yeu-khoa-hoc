@@ -32,9 +32,10 @@ export function createToolbar(root, {label, groups, mode, onTool, onMode, onRese
     g.tools.forEach(([id, text]) => {
       const b = el('button', tools, text, 'tool');
       b.type = 'button';
+      b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', () => onTool(id));
       buttons[id] = b;
     });
   });
-  return {setTool: id => Object.entries(buttons).forEach(([k, b]) => b.classList.toggle('on', k === id))};
+  return {setTool: id => Object.entries(buttons).forEach(([k, b]) => { b.classList.toggle('on', k === id); b.setAttribute('aria-pressed', String(k === id)); })};
 }

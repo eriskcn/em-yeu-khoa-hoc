@@ -1,10 +1,10 @@
 const CSS = `
 .tl-panel{display:flex;flex-direction:column;gap:8px;font:14px sans-serif}
 .tl-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.tl-panel button,.tl-panel select{min-height:40px;min-width:40px;padding:0 10px;font:inherit}
+.tl-panel button,.tl-panel select{min-height:44px;min-width:44px;padding:0 10px;font:inherit}
 .tl-panel button:disabled{opacity:.4}
 .tl-time{min-width:9em;font-variant-numeric:tabular-nums}
-.tl-scrub{flex:1;min-width:120px;min-height:40px;margin:0}
+.tl-scrub{flex:1;min-width:120px;min-height:44px;margin:0}
 .tl-track{position:relative;height:40px;background:#0002;border-radius:4px}
 .tl-marker{position:absolute;top:4px;width:12px;min-width:12px!important;height:32px;min-height:32px!important;
   padding:0!important;margin-left:-6px;border:0;border-radius:3px;background:#2a7de1;cursor:pointer}

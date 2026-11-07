@@ -19,7 +19,8 @@ label{font-size:13px;display:flex;align-items:center;gap:4px}
 button.tool.on{background:#2563eb;border-color:#2563eb}
 #status{padding:10px 14px;border-radius:8px;background:#1e3a8a;font-size:14px;min-height:42px;display:flex;align-items:center;margin-top:8px}
 #timeline{margin-top:8px}
-#flow,#editor,#annotations{margin-top:8px;font-size:13px}
+.tb-wrap{display:contents}.tb-wrap[hidden]{display:none}
+#flow,#setup,#editor,#annotations{margin-top:8px;font-size:13px}
 button{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 12px;cursor:pointer}
 button:hover{border-color:#64748b}
 canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:none}
@@ -51,6 +52,7 @@ header{order:0}h1{font-size:16px}
   <canvas id="pitch" role="img" aria-label="Football pitch with players and ball. Use the status line and panels for the current state."></canvas>
   <div id="timeline"></div>
   <div id="flow"></div>
+  <div id="setup"></div>
   <div id="editor"></div>
   <div id="annotations"></div>
   <div id="analysis"></div>

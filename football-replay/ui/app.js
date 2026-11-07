@@ -9,14 +9,18 @@ import {createReplay} from '../replay/replay-engine.js';
 import {nextEventTime, prevEventTime} from '../replay/timeline.js';
 import {createHistory} from '../replay/snapshot-manager.js';
 import {analyze} from '../analysis/tactical-analyzer.js';
-import {drawPitch, toPx, toNorm, playerRadius} from '../rendering/pitch-renderer.js';
+import {drawPitch, toPx, toNorm, playerRadius, setView} from '../rendering/pitch-renderer.js';
 import {drawPlayer} from '../rendering/player-renderer.js';
 import {drawBall} from '../rendering/ball-renderer.js';
-import {drawAnnotations, drawDraft} from '../rendering/annotation-renderer.js';
+import {drawAnnotations, drawDraft, drawGhost} from '../rendering/annotation-renderer.js';
 import {attachPointer} from '../interaction/pointer-controller.js';
 import {createDragController} from '../interaction/drag-controller.js';
 import {createDrawingController} from '../interaction/drawing-controller.js';
 import {createToolbar} from './toolbar.js';
+import {identity, zoomAt, pan} from '../interaction/viewport.js';
+import {applyFormation} from '../core/formations.js';
+import {exportScenario, importScenario} from '../core/scenario-io.js';
+import {createSetupPanel} from './setup-panel.js';
 import {createTimelinePanel} from './timeline-panel.js';
 import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor} from './event-editor.js';
@@ -28,7 +32,8 @@ const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
 let aspect = FORMATS[FORMAT].aspect;
 const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1};
 const EVENT_TOOLS = Object.keys(DUR);
-const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text'];
+const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
+const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
@@ -42,6 +47,7 @@ let annos = createAnnotations();
 let tool = 'drag', mode = 'simulate';
 let t = 0, selectedId = null, pending = null, draft = null, hideDrawings = false, speed = 1;
 let size = {w: 0, h: 0};
+let view = identity, showGhost = false, phase = 'setup', formationNames = {};
 let queued = false;
 
 const say = msg => { statusEl.textContent = msg; };
@@ -107,6 +113,7 @@ function render() {
   const s = stateAt(setup, events, t), r = playerRadius(w);
   drawPitch(ctx, w, h);
   drawFlights(w, h);
+  if (showGhost) drawGhost(ctx, w, h, stateAt(setup, events, 0).players, {colors: TEAM_COLORS, radius: r});
   if (!hideDrawings) drawAnnotations(ctx, w, h, annos.items, {t});
   drawDraft(ctx, w, h, draft);
   s.players.forEach(p => {
@@ -124,6 +131,7 @@ function render() {
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
     canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
+  setupPanel.update({format: FORMAT, formationNames});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
   canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with player ${s.players.find(p => p.id === s.ball.owner).num}`}.`);
@@ -237,9 +245,12 @@ attachPointer(canvas, {
     return false;
   },
   move: pt => active && active.move(pt),
+  pinch: (f, cx, cy) => { view = zoomAt(view, f, cx, cy, size.w, size.h); setView(view); invalidate(); },
+  panBy: (dx, dy) => { view = pan(view, dx, dy, size.w, size.h); setView(view); invalidate(); },
   up() {
     const was = active;
     active = null;
+    if (!was) return; // a second finger already cancelled the drag
     was.up();
     if (was === drag) commit();
   }
@@ -249,19 +260,22 @@ attachPointer(canvas, {
 const toolbar = createToolbar(document.getElementById('toolbar'), {
   formats: Object.entries(FORMATS).map(([k, f]) => [k, f.label]),
   format: FORMAT,
+  phases: [['setup', '1 Setup'], ['sim', '2 Simulation'], ['analysis', '3 Analysis']],
+  phase,
   mode,
   groups: [
-    {name: 'Setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
-    {name: 'Events', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['sub', 'Substitute']]},
-    {name: 'Draw', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
-      ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text']]}
+    {name: 'Setup', phase: 'setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
+    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['sub', 'Substitute']]},
+    {name: 'Draw', phase: 'analysis', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
+      ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text'],
+      ['defline', 'Def. line'], ['press', 'Press zone'], ['lane', 'Lane']]}
   ],
   onTool: id => {
     tool = id;
     pending = null;
     drawing.cancel();
     toolbar.setTool(id);
-    say(id === 'area' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`);
+    say(id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`);
     invalidate();
   },
   onFormat: f => {
@@ -301,9 +315,49 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
   },
   onDeleteEvent: deleteSelected,
   onClearDrawings: () => { annos = clearAnnotations(annos); commit(); invalidate(); },
-  onToggleDrawings: v => { hideDrawings = v; invalidate(); }
+  onToggleDrawings: v => { hideDrawings = v; invalidate(); },
+  onToggleGhost: v => { showGhost = v; invalidate(); },
+  onResetView: () => { view = identity; setView(view); invalidate(); },
+  onExport: () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([exportScenario({setup, events, annotations: annos})], {type: 'application/json'}));
+    a.download = 'scenario.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+  onImport: text => {
+    if ((events.length || annos.items.length) && !confirm('Replace the current scenario with the imported one?')) return;
+    try {
+      const r = importScenario(text);
+      FORMAT = r.setup.format;
+      aspect = FORMATS[FORMAT].aspect;
+      setup = r.setup;
+      events = r.events;
+      annos = r.annotations;
+      selectedId = null;
+      formationNames = {};
+      toolbar.setFormat(FORMAT);
+      history.reset(snapshot());
+      replay.seek(0);
+      const issues = validateEvents(setup, events, mode);
+      say(r.warnings.length ? `Imported with ${r.warnings.length} warning(s): ${r.warnings[0]}`
+        : issues.length ? `Imported; ${issues.length} event issue(s): ${issues[0].message}` : 'Imported.');
+    } catch (e) { say(`Import failed: ${e.message}`); }
+    invalidate();
+  },
+  onPhase: id => setPhase(id)
 });
 toolbar.setTool(tool);
+const setPhase = id => {
+  phase = id;
+  toolbar.setPhase(id);
+  PHASES_ALL.forEach(([ph, el]) => { el.hidden = ph !== id; });
+  toolbar.setTool(PHASES[id][0]);
+  tool = PHASES[id][0];
+  pending = null;
+  drawing.cancel();
+  invalidate();
+};
 
 const timeline = createTimelinePanel(document.getElementById('timeline'), {
   onToggle: () => replay.toggle(),
@@ -322,6 +376,18 @@ const timeline = createTimelinePanel(document.getElementById('timeline'), {
   onRedo: () => apply(history.redo())
 });
 const analysisPanel = createAnalysisPanel(document.getElementById('analysis'));
+const setupPanel = createSetupPanel(document.getElementById('setup'), {
+  onChange: i => {
+    if (i.kind === 'flip') { say('Flip sides is not supported yet: goals and kick-off assume team 1 attacks left.'); return; }
+    if (t !== 0) { say('Go to 0.00 s to change formations.'); return; }
+    setup = applyFormation(setup, i.team, i.name);
+    formationNames = {...formationNames, [i.team]: i.name};
+    commit();
+    invalidate();
+  }
+});
+const PHASES_ALL = [['setup', document.getElementById('setup')], ['sim', document.getElementById('editor')],
+  ['analysis', document.getElementById('annotations')]];
 const flowEl = document.getElementById('flow');
 const editor = createEventEditor(document.getElementById('editor'), {
   onChange: (id, patch) => {
@@ -354,4 +420,5 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', invalidate);
 say('Drag players to set the starting positions, then pick an event tool.');
+setPhase('setup');
 render();

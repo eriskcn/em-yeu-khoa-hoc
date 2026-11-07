@@ -11,6 +11,10 @@ export function malformed(setup, ev) {
   if (!ev || typeof ev !== 'object') return 'event is not an object';
   const has = id => Number.isInteger(id) && setup.players.some(p => p.id === id);
   if (!EVENT_TYPES.includes(ev.type)) return `unknown type: ${ev.type}`;
+  if (ev.type === 'phase') {
+    if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
+    return ['half-time', 'full-time'].includes(ev.kind) ? null : 'phase kind must be half-time or full-time';
+  }
   if (ev.type === 'sub') {
     if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
     if (ev.team !== 0 && ev.team !== 1) return 'sub needs team 0 or 1';
@@ -29,6 +33,7 @@ export function malformed(setup, ev) {
   return null;
 }
 
+export const isBallEv = e => BALL_TYPES.includes(e.type) || e.type === 'save';
 const valid = (setup, events) => events.filter(e => !malformed(setup, e)).sort(byTime);
 
 // Player position at t: walk the actor's own move/dribble events; each starts where the previous ended.
@@ -53,10 +58,16 @@ export function resolveBall(setup, events, t) {
   let loose = {x: setup.ball.x, y: setup.ball.y};
   let busyUntil = -Infinity;
   const issues = [];
+  const consumed = new Set(); // save events matched to a shot in flight
+  const keeperOf = k => setup.players.find(p => p.team === k).id;
   const out = (pos, z, status) => ({ball: {x: pos.x, y: pos.y, z, owner: status === 'controlled' ? owner : null, status}, issues});
 
-  for (const ev of sorted.filter(e => BALL_TYPES.includes(e.type))) {
+  for (const ev of sorted.filter(isBallEv)) {
     if (ev.t > t) break;
+    if (ev.type === 'save') {
+      if (!consumed.has(ev.id)) issues.push({eventId: ev.id, code: 'bad-save', message: 'save needs the goalkeeper and a shot in flight toward their goal'});
+      continue;
+    }
     if (ev.t < busyUntil) { issues.push({eventId: ev.id, code: 'overlap', message: 'ball events overlap in time'}); continue; }
     if (ev.type !== 'tackle' && owner !== ev.actor) {
       if (!ev.manual) { issues.push({eventId: ev.id, code: 'not-owner', message: `player ${ev.actor} does not have the ball`}); continue; }
@@ -74,13 +85,34 @@ export function resolveBall(setup, events, t) {
     const tg = ev.target;
     const dest = tg === 'goal' ? GOAL[team(ev.actor)]
       : isPt(tg) ? tg : posAt(setup, sorted, tg, end);
-    if (t < end) {
-      const u = (t - ev.t) / ev.dur;
+    const at = tt => {
+      const u = (tt - ev.t) / ev.dur;
       const q = lerp(from, dest, u);
       const len = Math.hypot(dest.x - from.x, dest.y - from.y) || 1;
       const k = 4 * u * (1 - u);
       const off = (ev.bend ?? 0) * k;
-      return out({x: q.x - (dest.y - from.y) / len * off, y: q.y + (dest.x - from.x) / len * off}, (ev.lift ?? 0) * k, 'in-transit');
+      return {x: q.x - (dest.y - from.y) / len * off, y: q.y + (dest.x - from.x) / len * off, z: (ev.lift ?? 0) * k};
+    };
+    // A shot toward the defending keeper's goal can be saved by that keeper's save event during the flight.
+    const kid = keeperOf(1 - team(ev.actor));
+    const sv = ev.type === 'shot' && Math.abs(dest.x - GOAL[team(ev.actor)].x) < .5
+      ? sorted.find(e => e.type === 'save' && e.actor === kid && e.t > ev.t && e.t < end && !consumed.has(e.id)) : null;
+    if (sv) {
+      consumed.add(sv.id);
+      const sEnd = sv.t + sv.dur;
+      busyUntil = sEnd;
+      if (t >= sv.t) {
+        if (t < sEnd) {
+          const a = at(sv.t), b = posAt(setup, sorted, kid, sEnd), u = (t - sv.t) / sv.dur;
+          return out(lerp(a, b, u), a.z * (1 - u), 'in-transit');
+        }
+        owner = kid;
+        continue;
+      }
+    }
+    if (t < end) {
+      const {z, ...q} = at(t);
+      return out(q, z, 'in-transit');
     }
     owner = typeof tg === 'number' ? tg : null;
     loose = {x: dest.x, y: dest.y};

@@ -1,5 +1,5 @@
 // Annotations: plain JSON in normalised 0..1 coordinates. All functions return new state.
-const TYPES = {arrow: 2, line: 2, curve: 3, circle: 2, area: 3, text: 1, freehand: 2};
+const TYPES = {arrow: 2, line: 2, curve: 3, circle: 2, area: 3, text: 1, freehand: 2, defline: 2, press: 3, lane: 2};
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 const inUnit = n => Number.isFinite(n) && n >= 0 && n <= 1;
 const timeOk = n => n === null || Number.isFinite(n);
@@ -18,9 +18,11 @@ export function validateAnnotations(items) {
     if (!min) throw new Error(`bad type ${a.type}`);
     if (!Array.isArray(a.pts)) throw new Error('pts must be an array');
     const n = a.pts.length;
-    const open = a.type === 'area' || a.type === 'freehand';
+    const open = a.type === 'area' || a.type === 'freehand' || a.type === 'press';
     if (open ? n < min : n !== min) throw new Error(`bad point count for ${a.type}`);
     if (a.type === 'freehand' && n > 300) throw new Error('too many points');
+    if (a.type === 'defline' && a.pts[0].x !== a.pts[1].x && a.pts[0].y !== a.pts[1].y) throw new Error('defline must be horizontal or vertical');
+    if (a.type === 'lane' && a.width !== undefined && !(Number.isFinite(a.width) && a.width > 0 && a.width <= 0.2)) throw new Error('bad width');
     if (!a.pts.every(p => p && inUnit(p.x) && inUnit(p.y))) throw new Error('point out of range');
     if (typeof a.color !== 'string' || !COLOR.test(a.color)) throw new Error('bad color');
     if ((a.type === 'text' || a.text !== undefined) && !textOk(a.text)) throw new Error('bad text');

@@ -168,15 +168,15 @@ const I18N = {
     tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không', tool_arrow: 'Mũi tên', tool_line: 'Đường kẻ', tool_area: 'Vùng', clearDraw: 'Xóa nét vẽ',
     st_arrow: 'Mũi tên: kéo trên sân để vẽ. Vẽ được cả khi đang tạm dừng.', st_line: 'Đường kẻ: kéo trên sân để vẽ.', st_area: 'Vùng: nhấn để đặt các điểm; nhấn lại điểm đầu (hoặc nhấn đúp) để khép kín.',
     st_move: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Khung hình được tạo tự động tại thời điểm hiện tại.',
-    st_pass: 'Chuyền: nhấn người thực hiện, rồi nhấn người nhận.',
-    st_cross: 'Tạt bóng: nhấn cầu thủ tạt, rồi nhấn người nhận.',
-    st_shot: 'Sút: nhấn cầu thủ sút. Bóng bay về khung thành đối phương.',
+    st_pass: 'Chuyền: nhấn người thực hiện, rồi nhấn người nhận hoặc một khoảng trống.',
+    st_cross: 'Tạt bóng: nhấn cầu thủ tạt, rồi nhấn người nhận hoặc một khoảng trống.',
+    st_shot: 'Sút: nhấn cầu thủ sút, rồi nhấn một khoảng trống; nhấn lại cầu thủ để sút vào khung thành.',
     st_dribble: 'Rê bóng: nhấn cầu thủ đang rê.',
     st_tackle: 'Tắc bóng: nhấn cầu thủ tắc, rồi nhấn cầu thủ bị tắc.',
     st_block: 'Chặn: nhấn cầu thủ chặn bóng.',
     st_duel: 'Tranh chấp mặt đất: nhấn hai cầu thủ.',
     st_aerial: 'Tranh chấp trên không: nhấn hai cầu thủ. Bóng bổng giữa hai người.',
-    st_pickTarget: 'Chọn mục tiêu. Nhấn lại người thực hiện để hủy.',
+    st_pickTarget: 'Nhấn một cầu thủ hoặc khoảng trống làm đích. Nhấn lại người thực hiện để hủy (Sút: để sút vào khung thành).',
     st_needPlayer: 'Hãy nhấn vào một cầu thủ.',
     st_added: 'Đã thêm sự kiện. Chọn công cụ khác hoặc nhấn Di chuyển để thoát.',
     st_locked: 'Không thể kéo bóng khi sự kiện bóng đang diễn ra.',
@@ -189,7 +189,7 @@ const I18N = {
     keyDel: 'Xóa khung tại đây', evDel: 'Xóa sự kiện',
     play: '▶ Phát', pause: '❚❚ Tạm dừng', restart: '⟲ Phát lại', speed: 'Tốc độ',
     pass: 'Chuyền', cross: 'Tạt', shot: 'Sút', dribble: 'Rê', tackle: 'Tắc', block: 'Chặn',
-    duel: 'Tranh chấp', aerial: 'Trên không', goal: 'Khung thành', ball: 'Bóng',
+    duel: 'Tranh chấp', aerial: 'Trên không', goal: 'Khung thành', space: 'Khoảng trống', ball: 'Bóng',
     guide_title: 'Hướng dẫn nhanh',
     g1: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Mỗi lần kéo tự tạo khung hình tại thời điểm hiện tại.',
     g2: 'Nhấn hoặc kéo thanh thời gian để đổi thời điểm. Nhấn Phát để xem lại toàn bộ.',
@@ -207,15 +207,15 @@ const I18N = {
     tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial', tool_arrow: 'Arrow', tool_line: 'Line', tool_area: 'Area', clearDraw: 'Clear drawings',
     st_arrow: 'Arrow: drag on the pitch to draw. Works while paused too.', st_line: 'Line: drag on the pitch to draw.', st_area: 'Area: click to place points; click the first point (or double-click) to close the shape.',
     st_move: 'Drag players or the ball to position them. Keyframes are created automatically at the current time.',
-    st_pass: 'Pass: click the passer, then the receiver.',
-    st_cross: 'Cross: click the crosser, then the receiver.',
-    st_shot: 'Shot: click the shooter. The ball flies toward the opponent\'s goal.',
+    st_pass: 'Pass: click the passer, then the receiver or an empty spot.',
+    st_cross: 'Cross: click the crosser, then the receiver or an empty spot.',
+    st_shot: 'Shot: click the shooter, then an empty spot; click the shooter again to shoot at goal.',
     st_dribble: 'Dribble: click the player dribbling.',
     st_tackle: 'Tackle: click the tackler, then the player tackled.',
     st_block: 'Block: click the blocking player.',
     st_duel: 'Ground duel: click both players.',
     st_aerial: 'Aerial duel: click both players. The ball rises between them.',
-    st_pickTarget: 'Choose a target. Click the actor again to cancel.',
+    st_pickTarget: 'Click a player or an empty spot as the target. Click the actor again to cancel (Shot: to shoot at goal).',
     st_needPlayer: 'Click a player.',
     st_added: 'Event added. Pick another tool, or choose Move to exit.',
     st_locked: 'The ball cannot be dragged while a ball event is active.',
@@ -228,7 +228,7 @@ const I18N = {
     keyDel: 'Delete keyframe here', evDel: 'Delete event',
     play: '▶ Play', pause: '❚❚ Pause', restart: '⟲ Restart', speed: 'Speed',
     pass: 'Pass', cross: 'Cross', shot: 'Shot', dribble: 'Dribble', tackle: 'Tackle', block: 'Block',
-    duel: 'Duel', aerial: 'Aerial', goal: 'Goal', ball: 'Ball',
+    duel: 'Duel', aerial: 'Aerial', goal: 'Goal', space: 'Space', ball: 'Ball',
     guide_title: 'Quick guide',
     g1: 'Drag players or the ball to position them. Each drag creates a keyframe at the current time.',
     g2: 'Click or drag the timeline to change time. Press Play to watch the whole sequence.',
@@ -263,6 +263,9 @@ const tokName = id => {
   return tk.type === 'b' ? T('ball') : `${tk.team === 0 ? 'A' : 'B'}${tk.num}`;
 };
 const goalPt = id => ({x: tokens[id].team === 0 ? 1 : 0, y: .5});
+// Flight target: 'goal', a free {x,y} point, or a player id.
+const tgtPos = (e, t) => e.target === 'goal' ? goalPt(e.actor) : typeof e.target === 'object' ? e.target : interp(t)[e.target];
+const tgtLabel = e => e.target === 'goal' ? T('goal') : typeof e.target === 'object' ? T('space') : tokName(e.target);
 const ballInActive = () => events.some(e => BALL_EV.has(e.type) && active(e, state.t));
 
 function setStatus(key) {
@@ -378,7 +381,7 @@ function restore(d) {
   const e2 = d.events.map(e => {
     const ok = TYPE_DEFAULTS[e.type] && num(e.t) && num(e.dur) && e.dur > 0 && num(e.bend) && num(e.lift) && num(e.id) &&
       Number.isInteger(e.actor) && e.actor >= 0 && e.actor < n &&
-      (e.target === null || e.target === 'goal' || (Number.isInteger(e.target) && e.target >= 0 && e.target < n)) &&
+      (e.target === null || e.target === 'goal' || (typeof e.target === 'object' && num(e.target.x) && num(e.target.y)) || (Number.isInteger(e.target) && e.target >= 0 && e.target < n)) &&
       (e.endKf === -1 || k2[e.endKf]);
     if (!ok) throw new Error('bad event');
     return {...e, endKf: e.endKf === -1 ? null : k2[e.endKf]};
@@ -452,7 +455,7 @@ function ballOfEvent(e, t, P) {
   const endT = e.t + e.dur, ct = Math.min(t, endT), f = frac(e, ct);
   if (FLIGHT.has(e.type)) {
     const A = interp(e.t)[e.actor];
-    const B = e.target === 'goal' ? goalPt(e.actor) : interp(endT)[e.target];
+    const B = tgtPos(e, endT);
     return arc(A, B, e.bend, e.lift, f);
   }
   const Pc = (ct === t && P) ? P : interp(ct);
@@ -515,7 +518,7 @@ function createEvent(type, actor, target) {
   const e = {
     id: ++evSeq, type, t: state.t, dur: d.dur, bend: d.bend, lift: d.lift,
     actor,
-    target: type === 'shot' ? 'goal' : (type === 'dribble' || type === 'block') ? null : target,
+    target: type === 'shot' ? (target || 'goal') : (type === 'dribble' || type === 'block') ? null : target,
     endKf: null
   };
   events.push(e);
@@ -595,7 +598,7 @@ function updateEventPanel() {
   const d = e ? e : (tool !== 'move' ? defaults[tool] : null);
   let title = T('panel_none');
   if (e) {
-    const tgt = e.target == null ? '' : ' → ' + (e.target === 'goal' ? T('goal') : tokName(e.target));
+    const tgt = e.target == null ? '' : ' → ' + tgtLabel(e);
     title = `${T(e.type)} · ${tokName(e.actor)}${tgt}`;
   } else if (d) {
     title = `${T('panel_defaults')} ${T(tool)}`;
@@ -710,7 +713,7 @@ function drawField() {
 
 function drawTrajectory(e) {
   const A = interp(e.t)[e.actor];
-  const B = e.target === 'goal' ? goalPt(e.actor) : interp(e.t + e.dur)[e.target];
+  const B = tgtPos(e, e.t + e.dur);
   ctx.beginPath();
   for (let k = 0; k <= 40; k++) {
     const p = arc(A, B, e.bend, e.lift, k / 40);
@@ -753,7 +756,7 @@ function drawEffects(P) {
 }
 
 function drawBanner(e, row) {
-  const tgt = e.target == null ? '' : ' → ' + (e.target === 'goal' ? T('goal') : tokName(e.target));
+  const tgt = e.target == null ? '' : ' → ' + tgtLabel(e);
   const txt = `${T(e.type)} · ${tokName(e.actor)}${tgt}`;
   ctx.font = '12px system-ui, sans-serif';
   const w = ctx.measureText(txt).width + 12;
@@ -883,7 +886,7 @@ function draw() {
   if (selEvent) {
     ring(displayPx(tokens[selEvent.actor]), R * 1.5, '#fbbf24', 2, true);
     if (selEvent.target != null && selEvent.target !== 'goal') {
-      ring(displayPx(tokens[selEvent.target]), R * 1.5, '#fbbf24', 2, true);
+      ring(typeof selEvent.target === 'object' ? toPx(selEvent.target) : displayPx(tokens[selEvent.target]), R * 1.5, '#fbbf24', 2, true);
     }
   }
 
@@ -972,18 +975,26 @@ cvs.addEventListener('pointerdown', e => {
     return;
   }
 
+  if (FLIGHT.has(tool) && pendingActor !== null && (!tk || tk.type !== 'p')) {
+    createEvent(tool, pendingActor, normPx(pt));
+    return;
+  }
   if (!tk || tk.type !== 'p') {
     pendingActor = null;
     setStatus('st_needPlayer');
     return;
   }
-  if (tool === 'shot' || tool === 'dribble' || tool === 'block') {
+  if (tool === 'dribble' || tool === 'block') {
     createEvent(tool, tk.id, null);
     return;
   }
   if (pendingActor === null) {
     pendingActor = tk.id;
     setStatus('st_pickTarget');
+    return;
+  }
+  if (tk.id === pendingActor && tool === 'shot') {
+    createEvent('shot', pendingActor, 'goal');
     return;
   }
   if (tk.id === pendingActor) {

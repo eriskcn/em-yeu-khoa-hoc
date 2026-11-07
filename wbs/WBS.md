@@ -47,6 +47,7 @@ Status: Not Started | In Progress | Blocked | Completed
 | 6.1 | Assert-based self-check for `interp` / scenario (de)serialization | 2.1 | Not Started |
 | 6.2 | Manual browser pass: desktop + mobile width, VI/EN | 2–5 | Not Started |
 | 7 | Pre-record drawing (user-approved scope change 2026-11-07): arrow / line / area annotations, drawable while paused, saved with scenario, undoable | 2.1, 3 | Completed |
+| 8 | Pass / cross / shot to an empty spot (user-approved scope change 2026-11-07): target stored as {x,y} | 2.1 | Completed |
 
 ## Out of scope (needs approval to add)
 Splitting into multiple files/build step, video/GIF export, multiplayer/sharing server, new event types, theme sync with home page.

@@ -30,6 +30,14 @@ export function validateEvents(setup, events, mode = 'simulate') {
       }
     }
   }
+  const used = [0, 0];
+  const off = new Set();
+  const maxSubs = FORMATS[setup.format].maxSubs;
+  for (const ev of good.filter(e => e.type === 'sub').sort((a, b) => a.t - b.t || a.id - b.id)) {
+    if (off.has(ev.off)) issues.push({eventId: ev.id, level, code: 'already-subbed', message: `player ${ev.off} was already subbed off`});
+    else if (++used[ev.team] > maxSubs) issues.push({eventId: ev.id, level, code: 'max-subs', message: `more than ${maxSubs} substitutions for team ${ev.team}`});
+    off.add(ev.off);
+  }
   return issues;
 }
 

@@ -4,13 +4,20 @@ const isPt = o => o !== null && typeof o === 'object' && Number.isFinite(o.x) &&
 const byTime = (a, b) => a.t - b.t || a.id - b.id;
 const lerp = (a, b, u) => ({x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u});
 
-export const duration = events => events.reduce((m, e) => Math.max(m, e.t + e.dur), 0);
+export const duration = events => events.reduce((m, e) => Math.max(m, e.t + (e.dur ?? 0)), 0);
 
 // Structural problem with an event (message) or null. Such events are ignored by stateAt.
 export function malformed(setup, ev) {
   if (!ev || typeof ev !== 'object') return 'event is not an object';
   const has = id => Number.isInteger(id) && setup.players.some(p => p.id === id);
   if (!EVENT_TYPES.includes(ev.type)) return `unknown type: ${ev.type}`;
+  if (ev.type === 'sub') {
+    if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
+    if (ev.team !== 0 && ev.team !== 1) return 'sub needs team 0 or 1';
+    if (!has(ev.off) || setup.players.find(p => p.id === ev.off).team !== ev.team) return `sub off must be a player of team ${ev.team}`;
+    if (ev.on === undefined || ev.on === null || ev.on === '') return 'sub needs an on number/label';
+    return null;
+  }
   if (!has(ev.actor)) return `unknown actor: ${ev.actor}`;
   if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
   if (!Number.isFinite(ev.dur) || ev.dur <= 0) return 'dur must be a number > 0';
@@ -85,7 +92,10 @@ export function resolveBall(setup, events, t) {
 export function stateAt(setup, events, t) {
   const sorted = valid(setup, events);
   return {
-    players: setup.players.map(p => ({...p, ...posAt(setup, sorted, p.id, t)})),
+    players: setup.players.map(p => {
+      const s = sorted.filter(e => e.type === 'sub' && e.off === p.id && e.t <= t).pop();
+      return {...p, ...posAt(setup, sorted, p.id, t), ...(s && {num: s.on})};
+    }),
     ball: resolveBall(setup, events, t).ball
   };
 }

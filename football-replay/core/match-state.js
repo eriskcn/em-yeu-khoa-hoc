@@ -23,3 +23,11 @@ export const movePlayer = (s, id, x, y) => ({
 });
 
 export const moveBall = (s, x, y) => ({...s, ball: {x: clamp01(x), y: clamp01(y)}});
+
+// Give the ball to a player (placed on them) or release it (null = loose where it is).
+export function setOwner(s, id) {
+  if (id === null) return {...s, ball: {...s.ball, owner: null}};
+  const p = s.players.find(q => q.id === id);
+  if (!p) throw new Error(`unknown player: ${id}`);
+  return {...s, ball: {x: p.x, y: p.y, owner: id}};
+}

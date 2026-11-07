@@ -23,9 +23,9 @@ import {createEventEditor} from './event-editor.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
 
-const FORMAT = 7;
+let FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
-const aspect = FORMATS[FORMAT].aspect;
+let aspect = FORMATS[FORMAT].aspect;
 const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1};
 const EVENT_TOOLS = Object.keys(DUR);
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text'];
@@ -126,6 +126,7 @@ function render() {
     canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
+  canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with player ${s.players.find(p => p.id === s.ball.owner).num}`}.`);
   const f = matchFlow(setup, events);
   flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
     ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '');
@@ -173,6 +174,12 @@ function clickTool(pt) {
     setup = setOwner(setup, p.id);
     commit();
     invalidate();
+    return;
+  }
+  if (tool === 'sub') {
+    if (!p) { say('Click the player to substitute off.'); return; }
+    const used = events.filter(e => e.type === 'sub' && e.team === p.team).length;
+    addEv({type: 'sub', team: p.team, off: p.id, on: String(setup.players.length / 2 + used + 1), t, dur: 0});
     return;
   }
   if (pending === null) {
@@ -240,11 +247,12 @@ attachPointer(canvas, {
 
 // --- panels -------------------------------------------------------------------
 const toolbar = createToolbar(document.getElementById('toolbar'), {
-  label: FORMATS[FORMAT].label,
+  formats: Object.entries(FORMATS).map(([k, f]) => [k, f.label]),
+  format: FORMAT,
   mode,
   groups: [
     {name: 'Setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
-    {name: 'Events', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run']]},
+    {name: 'Events', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['sub', 'Substitute']]},
     {name: 'Draw', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
       ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text']]}
   ],
@@ -255,6 +263,21 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
     toolbar.setTool(id);
     say(id === 'area' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`);
     invalidate();
+  },
+  onFormat: f => {
+    if (f === FORMAT) return FORMAT;
+    if ((events.length || annos.items.length) && !confirm('Switching format discards the current scenario. Continue?')) return FORMAT;
+    FORMAT = f;
+    aspect = FORMATS[f].aspect;
+    setup = createSetup(f);
+    events = [];
+    annos = createAnnotations();
+    selectedId = null;
+    history.reset(snapshot());
+    replay.seek(0);
+    say(`Format: ${FORMATS[f].label}`);
+    invalidate();
+    return FORMAT;
   },
   onMode: m => { mode = m; checkEvents(); },
   onReset: () => {

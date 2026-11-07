@@ -23,6 +23,21 @@ button.tool.on{background:#2563eb;border-color:#2563eb}
 button{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 12px;cursor:pointer}
 button:hover{border-color:#64748b}
 canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:none}
+button,select,a.back,input[type=checkbox]{min-height:44px}
+button,a.back{min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+input[type=checkbox]{min-width:24px}
+label{min-height:44px}
+:focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
+@media (max-width:600px){
+.wrap{display:flex;flex-direction:column;padding:8px}
+header{order:0}h1{font-size:16px}
+#status{order:1;margin-top:4px;min-height:44px;font-size:13px}
+#pitch{order:2}
+#toolbar{order:3}
+#timeline,#flow,#editor,#annotations,#analysis{order:4}
+.tb-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+.tb-row>*{flex:none}
+}
 </style>
 </head>
 <body>
@@ -31,9 +46,9 @@ canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:n
     <h1>Football Scenario Simulator</h1>
     <a class="back" href="../">← Home</a>
   </header>
-  <div id="toolbar"></div>
+  <div id="toolbar" role="toolbar" aria-label="Tools"></div>
   <div id="status" role="status" aria-live="polite"></div>
-  <canvas id="pitch"></canvas>
+  <canvas id="pitch" role="img" aria-label="Football pitch with players and ball. Use the status line and panels for the current state."></canvas>
   <div id="timeline"></div>
   <div id="flow"></div>
   <div id="editor"></div>

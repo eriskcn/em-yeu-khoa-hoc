@@ -26,5 +26,5 @@ test('movePlayer clamps to the pitch and does not mutate', () => {
 });
 
 test('unsupported format throws', () => {
-  assert.throws(() => createSetup(11));
+  assert.throws(() => createSetup(9));
 });

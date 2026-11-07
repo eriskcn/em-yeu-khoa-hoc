@@ -1,4 +1,5 @@
 import {FORMATS, BALL_TYPES} from './match-rules.js';
+import {setOwner, moveBall} from './match-state.js';
 import {stateAt, duration, malformed} from './simulation-engine.js';
 
 // matchFlow(setup, events) -> {score:[a,b], restarts:[{t, kind, team, at}], substitutions:[{t, team, off, on}]}
@@ -14,8 +15,8 @@ import {stateAt, duration, malformed} from './simulation-engine.js';
 // - Past a touchline: throw-in for the team opposite the last toucher, at the exit point on the line.
 // - Last toucher (APPROXIMATE) = actor of the latest ball event started at or before the exit time
 //   (initial owner if none).
-// - Substitutions are read from events {type:'sub', t, team, off, on}. stateAt ignores them as malformed,
-//   so they do not affect positions. Accepted in time order up to rules.maxSubs per team; extras dropped.
+// - Substitutions are read from events {type:'sub', t, team, off, on}. stateAt only swaps the shown shirt number
+//   (num override), so positions are unaffected. Accepted in time order up to rules.maxSubs per team; extras dropped.
 // - Offside is not evaluated (rules.offside is false for 7v7).
 const STEP = .05;
 const EPS = 1e-9;
@@ -62,4 +63,13 @@ export function matchFlow(setup, events) {
     .filter(e => used[e.team] < rules.maxSubs && ++used[e.team])
     .map(({t, team, off, on}) => ({t, team, off, on}));
   return {score, restarts, substitutions};
+}
+
+// New setup with the ball at restart.at, owned by the nearest player of restart.team (throw-in, corner, ...).
+export function restartSetup(setup, restart) {
+  const {x, y} = restart.at;
+  const near = setup.players.filter(p => p.team === restart.team)
+    .reduce((a, b) => (Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a));
+  const owned = setOwner(setup, near.id); // setOwner snaps the ball to the player; moveBall drops owner
+  return {...owned, ball: {...moveBall(owned, x, y).ball, owner: near.id}};
 }

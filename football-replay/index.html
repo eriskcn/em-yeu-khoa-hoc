@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Football Scenario Simulator</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,"Segoe UI",Roboto,sans-serif;background:#0b1120;color:#e2e8f0}
+.wrap{max-width:1000px;margin:0 auto;padding:14px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+h1{font-size:18px;margin:2px 0}
+a.back{color:#e2e8f0;text-decoration:none;font-size:13px;padding:6px 12px;border:1px solid #334155;border-radius:8px;background:#1e293b}
+#toolbar{display:flex;gap:8px;align-items:center;margin:8px 0}
+.format{font-weight:600;padding:6px 10px;background:#1e3a8a;border-radius:8px}
+button{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 12px;cursor:pointer}
+button:hover{border-color:#64748b}
+canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Football Scenario Simulator</h1>
+    <a class="back" href="../">← Home</a>
+  </header>
+  <div id="toolbar"></div>
+  <canvas id="pitch"></canvas>
+</div>
+<script type="module" src="./ui/app.js"></script>
+</body>
+</html>

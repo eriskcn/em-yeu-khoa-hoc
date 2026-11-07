@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -18,13 +18,14 @@ button:disabled,input:disabled{opacity:.4;cursor:default}
 input[type=color]{padding:2px;width:40px;height:34px}
 label{display:flex;align-items:center;gap:6px;font-size:13px}
 .lang button{padding:4px 10px;font-size:12px}
+.back{color:#e2e8f0;text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid #334155;border-radius:8px;background:#1e293b}
 .lang button.on{background:#2563eb;border-color:#2563eb}
 .tools{display:flex;gap:6px;flex-wrap:wrap}
 .tool{display:flex;flex-direction:column;align-items:center;min-width:92px;padding:8px 6px}
 .tool small{font-size:10px;opacity:.6;margin-top:2px}
 .tool.on{background:#2563eb;border-color:#2563eb}
 .status{padding:10px 14px;border-radius:8px;background:#1e3a8a;font-size:14px;min-height:42px;display:flex;align-items:center;margin-top:8px}
-canvas{width:100%;display:block;border-radius:10px;margin-top:8px}
+canvas{width:100%;display:block;touch-action:none;border-radius:10px;margin-top:8px}
 .timeline{position:relative;min-height:96px;background:#111827;border-radius:10px;margin-top:8px;overflow:hidden;cursor:pointer;user-select:none;touch-action:none}
 .tick{position:absolute;top:4px;font-size:10px;color:#64748b;transform:translateX(-50%);pointer-events:none}
 .kf{position:absolute;top:24px;width:12px;height:12px;background:#facc15;transform:translateX(-50%) rotate(45deg);cursor:pointer}
@@ -45,19 +46,22 @@ details li{margin:4px 0}
   <header>
     <h1 data-i18n="title"></h1>
     <div class="row lang" style="margin:0">
-      <button data-lang="en">EN</button><button data-lang="vi" class="on">VI</button>
+      <a href="../" class="back" data-i18n="back"></a>
+      <button data-lang="en" class="on">EN</button><button data-lang="vi">VI</button>
     </div>
   </header>
 
   <div class="row">
     <select id="mode">
       <option value="5" data-i18n="mode5"></option>
-      <option value="7" data-i18n="mode7"></option>
-      <option value="11" selected data-i18n="mode11"></option>
+      <option value="7" selected data-i18n="mode7"></option>
+      <option value="11" data-i18n="mode11"></option>
     </select>
     <label><span data-i18n="colA"></span> <input type="color" id="colA" value="#1e6fd9"></label>
     <label><span data-i18n="colB"></span> <input type="color" id="colB" value="#e03c31"></label>
     <button id="reset" data-i18n="reset"></button>
+    <button id="undo" data-i18n="undo" disabled></button>
+    <button id="redo" data-i18n="redo" disabled></button>
     <button id="export" data-i18n="export"></button>
     <button id="import" data-i18n="import"></button>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
@@ -73,6 +77,10 @@ details li{margin:4px 0}
     <button class="tool" data-tool="block"><span data-i18n="tool_block"></span><small>B</small></button>
     <button class="tool" data-tool="duel"><span data-i18n="tool_duel"></span><small>G</small></button>
     <button class="tool" data-tool="aerial"><span data-i18n="tool_aerial"></span><small>A</small></button>
+    <button class="tool" data-tool="arrow"><span data-i18n="tool_arrow"></span><small>W</small></button>
+    <button class="tool" data-tool="line"><span data-i18n="tool_line"></span><small>L</small></button>
+    <button class="tool" data-tool="area"><span data-i18n="tool_area"></span><small>R</small></button>
+    <button id="clearDraw" data-i18n="clearDraw"></button>
   </div>
 
   <div class="status" id="status"></div>
@@ -146,26 +154,29 @@ const TYPE_COLOR = {pass:'#22c55e',cross:'#06b6d4',shot:'#f97316',dribble:'#a855
 const FLIGHT = new Set(['pass', 'cross', 'shot']);
 const BALL_EV = new Set(['pass', 'cross', 'shot', 'dribble', 'tackle', 'block', 'aerial']);
 const CONTACT = new Set(['tackle', 'duel', 'aerial', 'block']);
-const KEYS = {v:'move',p:'pass',c:'cross',s:'shot',d:'dribble',t:'tackle',b:'block',g:'duel',a:'aerial'};
+const KEYS = {v:'move',p:'pass',c:'cross',s:'shot',d:'dribble',t:'tackle',b:'block',g:'duel',a:'aerial',w:'arrow',l:'line',r:'area'};
+const SHAPES = new Set(['arrow', 'line']); // two-point drag tools; 'area' is a click-built polygon
 
 const I18N = {
   vi: {
     title: 'Mô phỏng tình huống bóng đá',
+    back: '← Trang chủ', confirmLose: 'Thao tác này sẽ xóa kịch bản hiện tại. Tiếp tục?',
     mode5: 'Sân 5 người', mode7: 'Sân 7 người', mode11: 'Sân 11 người',
-    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', export: 'Xuất', import: 'Nhập',
+    colA: 'Đội A', colB: 'Đội B', reset: 'Đặt lại đội hình', undo: 'Hoàn tác', redo: 'Làm lại', export: 'Xuất', import: 'Nhập',
     st_imported: 'Đã nhập kịch bản.', st_importFail: 'Không thể nhập: tệp không hợp lệ.',
     tool_move: 'Di chuyển', tool_pass: 'Chuyền', tool_cross: 'Tạt bóng', tool_shot: 'Sút',
-    tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không',
+    tool_dribble: 'Rê bóng', tool_tackle: 'Tắc bóng', tool_block: 'Chặn', tool_duel: 'Tranh chấp', tool_aerial: 'Trên không', tool_arrow: 'Mũi tên', tool_line: 'Đường kẻ', tool_area: 'Vùng', clearDraw: 'Xóa nét vẽ',
+    st_arrow: 'Mũi tên: kéo trên sân để vẽ. Vẽ được cả khi đang tạm dừng.', st_line: 'Đường kẻ: kéo trên sân để vẽ.', st_area: 'Vùng: nhấn để đặt các điểm; nhấn lại điểm đầu (hoặc nhấn đúp) để khép kín.',
     st_move: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Khung hình được tạo tự động tại thời điểm hiện tại.',
-    st_pass: 'Chuyền: nhấn người thực hiện, rồi nhấn người nhận.',
-    st_cross: 'Tạt bóng: nhấn cầu thủ tạt, rồi nhấn người nhận.',
-    st_shot: 'Sút: nhấn cầu thủ sút. Bóng bay về khung thành đối phương.',
+    st_pass: 'Chuyền: nhấn người thực hiện, rồi nhấn người nhận hoặc một khoảng trống.',
+    st_cross: 'Tạt bóng: nhấn cầu thủ tạt, rồi nhấn người nhận hoặc một khoảng trống.',
+    st_shot: 'Sút: nhấn cầu thủ sút, rồi nhấn một khoảng trống; nhấn lại cầu thủ để sút vào khung thành.',
     st_dribble: 'Rê bóng: nhấn cầu thủ đang rê.',
     st_tackle: 'Tắc bóng: nhấn cầu thủ tắc, rồi nhấn cầu thủ bị tắc.',
     st_block: 'Chặn: nhấn cầu thủ chặn bóng.',
     st_duel: 'Tranh chấp mặt đất: nhấn hai cầu thủ.',
     st_aerial: 'Tranh chấp trên không: nhấn hai cầu thủ. Bóng bổng giữa hai người.',
-    st_pickTarget: 'Chọn mục tiêu. Nhấn lại người thực hiện để hủy.',
+    st_pickTarget: 'Nhấn một cầu thủ hoặc khoảng trống làm đích. Nhấn lại người thực hiện để hủy (Sút: để sút vào khung thành).',
     st_needPlayer: 'Hãy nhấn vào một cầu thủ.',
     st_added: 'Đã thêm sự kiện. Chọn công cụ khác hoặc nhấn Di chuyển để thoát.',
     st_locked: 'Không thể kéo bóng khi sự kiện bóng đang diễn ra.',
@@ -178,7 +189,7 @@ const I18N = {
     keyDel: 'Xóa khung tại đây', evDel: 'Xóa sự kiện',
     play: '▶ Phát', pause: '❚❚ Tạm dừng', restart: '⟲ Phát lại', speed: 'Tốc độ',
     pass: 'Chuyền', cross: 'Tạt', shot: 'Sút', dribble: 'Rê', tackle: 'Tắc', block: 'Chặn',
-    duel: 'Tranh chấp', aerial: 'Trên không', goal: 'Khung thành', ball: 'Bóng',
+    duel: 'Tranh chấp', aerial: 'Trên không', goal: 'Khung thành', space: 'Khoảng trống', ball: 'Bóng',
     guide_title: 'Hướng dẫn nhanh',
     g1: 'Kéo cầu thủ hoặc bóng để đặt vị trí. Mỗi lần kéo tự tạo khung hình tại thời điểm hiện tại.',
     g2: 'Nhấn hoặc kéo thanh thời gian để đổi thời điểm. Nhấn Phát để xem lại toàn bộ.',
@@ -188,21 +199,23 @@ const I18N = {
   },
   en: {
     title: 'Football Scenario Simulator',
+    back: '← Home', confirmLose: 'This will discard the current scenario. Continue?',
     mode5: '5-a-side', mode7: '7-a-side', mode11: '11-a-side',
-    colA: 'Team A', colB: 'Team B', reset: 'Reset formation', export: 'Export', import: 'Import',
+    colA: 'Team A', colB: 'Team B', reset: 'Reset formation', undo: 'Undo', redo: 'Redo', export: 'Export', import: 'Import',
     st_imported: 'Scenario imported.', st_importFail: 'Import failed: invalid file.',
     tool_move: 'Move', tool_pass: 'Pass', tool_cross: 'Cross', tool_shot: 'Shot',
-    tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial',
+    tool_dribble: 'Dribble', tool_tackle: 'Tackle', tool_block: 'Block', tool_duel: 'Duel', tool_aerial: 'Aerial', tool_arrow: 'Arrow', tool_line: 'Line', tool_area: 'Area', clearDraw: 'Clear drawings',
+    st_arrow: 'Arrow: drag on the pitch to draw. Works while paused too.', st_line: 'Line: drag on the pitch to draw.', st_area: 'Area: click to place points; click the first point (or double-click) to close the shape.',
     st_move: 'Drag players or the ball to position them. Keyframes are created automatically at the current time.',
-    st_pass: 'Pass: click the passer, then the receiver.',
-    st_cross: 'Cross: click the crosser, then the receiver.',
-    st_shot: 'Shot: click the shooter. The ball flies toward the opponent\'s goal.',
+    st_pass: 'Pass: click the passer, then the receiver or an empty spot.',
+    st_cross: 'Cross: click the crosser, then the receiver or an empty spot.',
+    st_shot: 'Shot: click the shooter, then an empty spot; click the shooter again to shoot at goal.',
     st_dribble: 'Dribble: click the player dribbling.',
     st_tackle: 'Tackle: click the tackler, then the player tackled.',
     st_block: 'Block: click the blocking player.',
     st_duel: 'Ground duel: click both players.',
     st_aerial: 'Aerial duel: click both players. The ball rises between them.',
-    st_pickTarget: 'Choose a target. Click the actor again to cancel.',
+    st_pickTarget: 'Click a player or an empty spot as the target. Click the actor again to cancel (Shot: to shoot at goal).',
     st_needPlayer: 'Click a player.',
     st_added: 'Event added. Pick another tool, or choose Move to exit.',
     st_locked: 'The ball cannot be dragged while a ball event is active.',
@@ -215,7 +228,7 @@ const I18N = {
     keyDel: 'Delete keyframe here', evDel: 'Delete event',
     play: '▶ Play', pause: '❚❚ Pause', restart: '⟲ Restart', speed: 'Speed',
     pass: 'Pass', cross: 'Cross', shot: 'Shot', dribble: 'Dribble', tackle: 'Tackle', block: 'Block',
-    duel: 'Duel', aerial: 'Aerial', goal: 'Goal', ball: 'Ball',
+    duel: 'Duel', aerial: 'Aerial', goal: 'Goal', space: 'Space', ball: 'Ball',
     guide_title: 'Quick guide',
     g1: 'Drag players or the ball to position them. Each drag creates a keyframe at the current time.',
     g2: 'Click or drag the timeline to change time. Press Play to watch the whole sequence.',
@@ -225,7 +238,7 @@ const I18N = {
   }
 };
 
-let lang = 'vi', mode = '11', tokens = [], kfs = [], events = [], evSeq = 0;
+let lang = 'en', mode = '7', tokens = [], kfs = [], events = [], shapes = [], evSeq = 0, drawing = null, poly = null;
 let tool = 'move', pendingActor = null, selEvent = null, mpos = null, drag = null, scrubbing = false;
 let statusKey = 'st_move', lastL = 0, W = 0, H = 0, R = 12;
 const defaults = JSON.parse(JSON.stringify(TYPE_DEFAULTS));
@@ -250,6 +263,9 @@ const tokName = id => {
   return tk.type === 'b' ? T('ball') : `${tk.team === 0 ? 'A' : 'B'}${tk.num}`;
 };
 const goalPt = id => ({x: tokens[id].team === 0 ? 1 : 0, y: .5});
+// Flight target: 'goal', a free {x,y} point, or a player id.
+const tgtPos = (e, t) => e.target === 'goal' ? goalPt(e.actor) : typeof e.target === 'object' ? e.target : interp(t)[e.target];
+const tgtLabel = e => e.target === 'goal' ? T('goal') : typeof e.target === 'object' ? T('space') : tokName(e.target);
 const ballInActive = () => events.some(e => BALL_EV.has(e.type) && active(e, state.t));
 
 function setStatus(key) {
@@ -291,6 +307,7 @@ function build() {
   });
   kfs = [{t: 0, p: pts}];
   events = [];
+  shapes = [];
   selEvent = null;
   pendingActor = null;
   state.playing = false;
@@ -304,15 +321,49 @@ const KEY = 'football-replay:scenario';
 let saveTimer = 0;
 function scheduleSave() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(serialize())); } catch {} }, 300);
+  saveTimer = setTimeout(save, 300);
+  pushHistory();
 }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(serialize())); } catch {} }
+
+// Undo/redo: undoStack top = current state.
+const undoStack = [], redoStack = [];
+let restoring = false;
+function pushHistory() {
+  if (restoring) return;
+  const s = JSON.stringify(serialize());
+  if (s === undoStack[undoStack.length - 1]) return;
+  undoStack.push(s);
+  if (undoStack.length > 100) undoStack.shift();
+  redoStack.length = 0;
+  updateHistoryButtons();
+}
+function updateHistoryButtons() {
+  $('undo').disabled = undoStack.length < 2;
+  $('redo').disabled = !redoStack.length;
+}
+function stepHistory(from, to) {
+  if (from.length < (from === undoStack ? 2 : 1)) return;
+  const cur = undoStack[undoStack.length - 1];
+  const snap = from === undoStack ? undoStack[undoStack.length - 2] : from[from.length - 1];
+  restoring = true;
+  try { restore(JSON.parse(snap)); } catch { restoring = false; return; }
+  restoring = false;
+  if (from === undoStack) { redoStack.push(undoStack.pop()); } else { undoStack.push(redoStack.pop()); }
+  clearTimeout(saveTimer);
+  save();
+  updateHistoryButtons();
+}
+const undo = () => stepHistory(undoStack, redoStack);
+const redo = () => stepHistory(redoStack, undoStack);
 
 // Scenario JSON (v1): {v, mode, colA, colB, kfs:[{t,p:[{x,y}]}], events:[{...event, endKf:index|null}], evSeq}
 function serialize() {
   return {
     v: 1, mode, colA: $('colA').value, colB: $('colB').value, evSeq,
     kfs: kfs.map(k => ({t: k.t, p: k.p.map(q => ({x: q.x, y: q.y}))})),
-    events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)}))
+    events: events.map(e => ({...e, endKf: kfs.indexOf(e.endKf)})),
+    shapes: JSON.parse(JSON.stringify(shapes))
   };
 }
 
@@ -330,11 +381,15 @@ function restore(d) {
   const e2 = d.events.map(e => {
     const ok = TYPE_DEFAULTS[e.type] && num(e.t) && num(e.dur) && e.dur > 0 && num(e.bend) && num(e.lift) && num(e.id) &&
       Number.isInteger(e.actor) && e.actor >= 0 && e.actor < n &&
-      (e.target === null || e.target === 'goal' || (Number.isInteger(e.target) && e.target >= 0 && e.target < n)) &&
+      (e.target === null || e.target === 'goal' || (typeof e.target === 'object' && num(e.target.x) && num(e.target.y)) || (Number.isInteger(e.target) && e.target >= 0 && e.target < n)) &&
       (e.endKf === -1 || k2[e.endKf]);
     if (!ok) throw new Error('bad event');
     return {...e, endKf: e.endKf === -1 ? null : k2[e.endKf]};
   });
+  const pt = q => q && num(q.x) && num(q.y);
+  const sh = d.shapes === undefined ? [] : d.shapes;
+  const shapeOk = h => h && (h.type === 'area' ? Array.isArray(h.pts) && h.pts.length >= 3 && h.pts.every(pt) : SHAPES.has(h.type) && pt(h.a) && pt(h.b));
+  if (!Array.isArray(sh) || !sh.every(shapeOk)) throw new Error('bad shape');
   mode = d.mode;
   $('mode').value = mode;
   $('colA').value = d.colA;
@@ -343,6 +398,7 @@ function restore(d) {
   build();
   kfs = k2;
   events = e2;
+  shapes = sh.map(h => h.type === 'area' ? {type: 'area', pts: h.pts.map(q => ({x: q.x, y: q.y}))} : {type: h.type, a: {x: h.a.x, y: h.a.y}, b: {x: h.b.x, y: h.b.y}});
   evSeq = d.evSeq;
   applyTime(0);
   renderTimeline();
@@ -399,7 +455,7 @@ function ballOfEvent(e, t, P) {
   const endT = e.t + e.dur, ct = Math.min(t, endT), f = frac(e, ct);
   if (FLIGHT.has(e.type)) {
     const A = interp(e.t)[e.actor];
-    const B = e.target === 'goal' ? goalPt(e.actor) : interp(endT)[e.target];
+    const B = tgtPos(e, endT);
     return arc(A, B, e.bend, e.lift, f);
   }
   const Pc = (ct === t && P) ? P : interp(ct);
@@ -462,7 +518,7 @@ function createEvent(type, actor, target) {
   const e = {
     id: ++evSeq, type, t: state.t, dur: d.dur, bend: d.bend, lift: d.lift,
     actor,
-    target: type === 'shot' ? 'goal' : (type === 'dribble' || type === 'block') ? null : target,
+    target: type === 'shot' ? (target || 'goal') : (type === 'dribble' || type === 'block') ? null : target,
     endKf: null
   };
   events.push(e);
@@ -501,6 +557,7 @@ function deleteKeyHere() {
 function setTool(name) {
   tool = name;
   pendingActor = null;
+  poly = null;
   document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.tool === name));
   cvs.style.cursor = name === 'move' ? 'default' : 'crosshair';
   setStatus('st_' + name);
@@ -541,7 +598,7 @@ function updateEventPanel() {
   const d = e ? e : (tool !== 'move' ? defaults[tool] : null);
   let title = T('panel_none');
   if (e) {
-    const tgt = e.target == null ? '' : ' → ' + (e.target === 'goal' ? T('goal') : tokName(e.target));
+    const tgt = e.target == null ? '' : ' → ' + tgtLabel(e);
     title = `${T(e.type)} · ${tokName(e.actor)}${tgt}`;
   } else if (d) {
     title = `${T('panel_defaults')} ${T(tool)}`;
@@ -656,7 +713,7 @@ function drawField() {
 
 function drawTrajectory(e) {
   const A = interp(e.t)[e.actor];
-  const B = e.target === 'goal' ? goalPt(e.actor) : interp(e.t + e.dur)[e.target];
+  const B = tgtPos(e, e.t + e.dur);
   ctx.beginPath();
   for (let k = 0; k <= 40; k++) {
     const p = arc(A, B, e.bend, e.lift, k / 40);
@@ -699,7 +756,7 @@ function drawEffects(P) {
 }
 
 function drawBanner(e, row) {
-  const tgt = e.target == null ? '' : ' → ' + (e.target === 'goal' ? T('goal') : tokName(e.target));
+  const tgt = e.target == null ? '' : ' → ' + tgtLabel(e);
   const txt = `${T(e.type)} · ${tokName(e.actor)}${tgt}`;
   ctx.font = '12px system-ui, sans-serif';
   const w = ctx.measureText(txt).width + 12;
@@ -757,10 +814,54 @@ function drawBall(tk) {
   ctx.fill();
 }
 
+function drawShape(h) {
+  ctx.save();
+  ctx.strokeStyle = ctx.fillStyle = '#facc15';
+  ctx.lineWidth = 3;
+  if (h.type === 'area') {
+    ctx.beginPath();
+    h.pts.forEach((q, i) => { const c = toPx(q); i ? ctx.lineTo(c.x, c.y) : ctx.moveTo(c.x, c.y); });
+    ctx.closePath();
+    ctx.globalAlpha = .25;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+  } else {
+    const a = toPx(h.a), b = toPx(h.b);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    if (h.type === 'arrow') {
+      const ang = Math.atan2(b.y - a.y, b.x - a.x), L = 14;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - L * Math.cos(ang - .45), b.y - L * Math.sin(ang - .45));
+      ctx.lineTo(b.x - L * Math.cos(ang + .45), b.y - L * Math.sin(ang + .45));
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawPoly() {
+  ctx.save();
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  poly.forEach((q, i) => { const c = toPx(q); i ? ctx.lineTo(c.x, c.y) : ctx.moveTo(c.x, c.y); });
+  if (mpos) ctx.lineTo(mpos.x, mpos.y);
+  ctx.stroke();
+  ctx.restore();
+  ring(toPx(poly[0]), 7, '#facc15', 2);
+}
+
 function draw() {
   const P = interp(state.t);
   ctx.clearRect(0, 0, W, H);
   drawField();
+  shapes.forEach(drawShape);
+  if (drawing) drawShape(drawing);
+  if (poly) drawPoly();
 
   if (kfs.length > 1) {
     tokens.forEach(tk => {
@@ -785,7 +886,7 @@ function draw() {
   if (selEvent) {
     ring(displayPx(tokens[selEvent.actor]), R * 1.5, '#fbbf24', 2, true);
     if (selEvent.target != null && selEvent.target !== 'goal') {
-      ring(displayPx(tokens[selEvent.target]), R * 1.5, '#fbbf24', 2, true);
+      ring(typeof selEvent.target === 'object' ? toPx(selEvent.target) : displayPx(tokens[selEvent.target]), R * 1.5, '#fbbf24', 2, true);
     }
   }
 
@@ -827,6 +928,10 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+function normPx(pt) {
+  return {x: clamp((pt.x - PAD) / (W - 2 * PAD), 0, 1), y: clamp((pt.y - PAD) / (H - 2 * PAD), 0, 1)};
+}
+
 function localPx(e) {
   const r = cvs.getBoundingClientRect();
   return {x: e.clientX - r.left, y: e.clientY - r.top};
@@ -844,6 +949,24 @@ cvs.addEventListener('pointerdown', e => {
   pause();
   const pt = localPx(e), tk = hit(pt);
 
+  if (tool === 'area') {
+    const n = normPx(pt), px = q => Math.hypot((q.x - n.x) * W, (q.y - n.y) * H);
+    if (!poly) { poly = [n]; return; }
+    if (poly.length >= 3 && px(poly[0]) < 12 || px(poly[poly.length - 1]) < 6) {
+      if (poly.length >= 3) { shapes.push({type: 'area', pts: poly}); scheduleSave(); poly = null; }
+      return;
+    }
+    poly.push(n);
+    return;
+  }
+
+  if (SHAPES.has(tool)) {
+    cvs.setPointerCapture(e.pointerId);
+    const n = normPx(pt);
+    drawing = {type: tool, a: n, b: n, pid: e.pointerId};
+    return;
+  }
+
   if (tool === 'move') {
     if (!tk) { selEvent = null; renderTimeline(); updateEventPanel(); return; }
     if (tk.type === 'b' && ballInActive()) { setStatus('st_locked'); return; }
@@ -852,18 +975,26 @@ cvs.addEventListener('pointerdown', e => {
     return;
   }
 
+  if (FLIGHT.has(tool) && pendingActor !== null && (!tk || tk.type !== 'p')) {
+    createEvent(tool, pendingActor, normPx(pt));
+    return;
+  }
   if (!tk || tk.type !== 'p') {
     pendingActor = null;
     setStatus('st_needPlayer');
     return;
   }
-  if (tool === 'shot' || tool === 'dribble' || tool === 'block') {
+  if (tool === 'dribble' || tool === 'block') {
     createEvent(tool, tk.id, null);
     return;
   }
   if (pendingActor === null) {
     pendingActor = tk.id;
     setStatus('st_pickTarget');
+    return;
+  }
+  if (tk.id === pendingActor && tool === 'shot') {
+    createEvent('shot', pendingActor, 'goal');
     return;
   }
   if (tk.id === pendingActor) {
@@ -876,6 +1007,7 @@ cvs.addEventListener('pointerdown', e => {
 
 cvs.addEventListener('pointermove', e => {
   mpos = localPx(e);
+  if (drawing && e.pointerId === drawing.pid) { drawing.b = normPx(mpos); return; }
   if (!drag || e.pointerId !== drag.pid) return;
   const pt = localPx(e);
   const x = clamp((pt.x - PAD) / (W - 2 * PAD), 0, 1);
@@ -889,6 +1021,15 @@ cvs.addEventListener('pointermove', e => {
 cvs.addEventListener('pointerleave', () => { mpos = null; });
 
 function endDrag(e) {
+  if (drawing && e.pointerId === drawing.pid) {
+    const {a, b} = drawing, type = drawing.type;
+    drawing = null;
+    if (Math.hypot((b.x - a.x) * W, (b.y - a.y) * H) > 6) {
+      shapes.push({type, a, b});
+      scheduleSave();
+    }
+    return;
+  }
   if (drag && e.pointerId === drag.pid) { drag = null; scheduleSave(); }
 }
 cvs.addEventListener('pointerup', endDrag);
@@ -913,7 +1054,9 @@ $('pdel').addEventListener('click', deleteEvent);
 $('pdur').addEventListener('input', e => setParam('dur', Math.max(0.2, +e.target.value)));
 $('pbend').addEventListener('input', e => setParam('bend', +e.target.value));
 $('plift').addEventListener('input', e => setParam('lift', +e.target.value));
-$('reset').addEventListener('click', () => { build(); scheduleSave(); });
+const okToLose = () => (!events.length && !shapes.length && kfs.length <= 1) || confirm(T('confirmLose'));
+$('clearDraw').addEventListener('click', () => { if (!shapes.length) return; shapes = []; draw(); scheduleSave(); });
+$('reset').addEventListener('click', () => { if (!okToLose()) return; build(); scheduleSave(); });
 $('export').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(serialize())], {type: 'application/json'}));
@@ -930,6 +1073,7 @@ $('importFile').addEventListener('change', async e => {
   catch { setStatus('st_importFail'); }
 });
 $('mode').addEventListener('change', e => {
+  if (!okToLose()) { e.target.value = mode; return; }
   mode = e.target.value;
   resize();
   build();
@@ -953,6 +1097,14 @@ document.querySelectorAll('.lang button').forEach(b => {
 window.addEventListener('resize', resize);
 window.addEventListener('keydown', e => {
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && e.target.type !== 'range') return;
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    const z = e.key.toLowerCase();
+    if (z === 'z' || z === 'y') {
+      e.preventDefault();
+      (z === 'y' || e.shiftKey ? redo : undo)();
+      return;
+    }
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     state.playing ? pause() : play();
@@ -979,6 +1131,9 @@ build();
 setTool('move');
 try { restore(JSON.parse(localStorage.getItem(KEY))); } catch {}
 resize();
+pushHistory();
+$('undo').addEventListener('click', undo);
+$('redo').addEventListener('click', redo);
 requestAnimationFrame(loop);
 </script>
 </body>

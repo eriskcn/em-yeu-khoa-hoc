@@ -1,5 +1,5 @@
 // Format label, Edit/Simulate switch, tool groups and a few actions. No state of its own.
-export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings, onToggleGhost, onResetView, onExport, onImport, onPhase, phases, phase}) {
+export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings, onToggleGhost, onResetView, onExport, onImport, onPhase, phases, phase, headerRoot}) {
   const el = (tag, parent, text, cls) => {
     const e = document.createElement(tag);
     if (text) e.textContent = text;
@@ -7,7 +7,9 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
     parent.append(e);
     return e;
   };
-  const row = el('div', root, null, 'tb-row');
+  const menu = el('details', headerRoot, null, 'tb-menu-wrap');
+  el('summary', menu, 'Menu');
+  const row = el('div', menu, null, 'tb-menu');
   const fsel = el('select', row, null, 'format');
   fsel.setAttribute('aria-label', 'Match format');
   formats.forEach(([v, t]) => { el('option', fsel, t).value = v; });
@@ -43,7 +45,7 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
   ghost.prepend(gb);
 
   const buttons = {};
-  const phaseRow = el('div', root, null, 'tb-row');
+  const phaseRow = el('div', headerRoot, null, 'tb-phases');
   el('span', phaseRow, 'Phase', 'tb-group');
   const phaseBtns = phases.map(([id, text]) => {
     const b = el('button', phaseRow, text);
@@ -51,7 +53,7 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
     b.addEventListener('click', () => onPhase(id));
     return [id, b];
   });
-  const tools = el('div', root, null, 'tb-row');
+  const tools = el('div', root, null, 'tb-tools');
   const wraps = [];
   groups.forEach(g => {
     const wrap = el('span', tools, null, 'tb-wrap');

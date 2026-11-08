@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createAnnotations, addAnnotation, removeAnnotation, clearAnnotations, updateAnnotation, setHidden,
-  setTimeWindow, visibleAt, validateAnnotations, serializeAnnotations, restoreAnnotations, saveView,
-  applyView, listViews,
+  setTimeWindow, validateAnnotations, serializeAnnotations, restoreAnnotations, saveView,
+  applyView,
 } from './annotation-state.js';
 import {createDrawingController} from '../interaction/drawing-controller.js';
 import {toPx} from '../rendering/pitch-renderer.js';
@@ -31,14 +31,10 @@ test('update patches and keeps id; invalid patch throws', () => {
   assert.throws(() => updateAnnotation(s, 1, {color: 'red'}));
 });
 
-test('visibleAt honours hidden and time windows', () => {
+test('time window rejects from > to', () => {
   let s = addAnnotation(addAnnotation(addAnnotation(createAnnotations(), arrow), arrow), arrow);
   s = setTimeWindow(s, 2, 5, 10);
   s = setHidden(s, 3, true);
-  assert.deepEqual(visibleAt(s, 0).map(a => a.id), [1]);
-  assert.deepEqual(visibleAt(s, 5).map(a => a.id), [1, 2]);
-  assert.deepEqual(visibleAt(s, 10).map(a => a.id), [1, 2]);
-  assert.deepEqual(visibleAt(s, 10.1).map(a => a.id), [1]);
   assert.throws(() => setTimeWindow(s, 2, 9, 3));
 });
 
@@ -92,7 +88,6 @@ test('saved views apply hidden flags', () => {
   let s = addAnnotation(addAnnotation(createAnnotations(), arrow), arrow);
   s = saveView(setHidden(s, 1, true), 'only2');
   s = saveView(setHidden(setHidden(s, 1, false), 2, true), 'only1');
-  assert.deepEqual(listViews(s), ['only2', 'only1']);
   assert.deepEqual(applyView(s, 'only2').items.map(a => a.hidden), [true, false]);
   assert.deepEqual(applyView(s, 'only1').items.map(a => a.hidden), [false, true]);
   assert.throws(() => applyView(s, 'none'));

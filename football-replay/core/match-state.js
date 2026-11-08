@@ -2,7 +2,7 @@ import {FORMATS} from './match-rules.js';
 import {createTeam} from '../entities/team.js';
 import {createBall} from '../entities/ball.js';
 
-const clamp01 = v => Math.min(1, Math.max(0, v));
+export const clamp01 = v => Math.min(1, Math.max(0, v));
 
 // Setup snapshot: where everything is before the situation starts.
 export function createSetup(format) {

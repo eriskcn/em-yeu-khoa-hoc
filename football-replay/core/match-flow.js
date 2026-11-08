@@ -1,12 +1,12 @@
 import {FORMATS, GOAL} from './match-rules.js';
-import {setOwner, moveBall} from './match-state.js';
+import {setOwner, moveBall, clamp01} from './match-state.js';
 import {stateAt, duration, malformed, isBallEv} from './simulation-engine.js';
 
 // matchFlow(setup, events) -> {score:[a,b], restarts:[{t, kind, team, at}], substitutions:[{t, team, off, on}]}
 // Pure and deterministic. Semantics:
 // - The ball is sampled from stateAt every STEP seconds over 0..duration (APPROXIMATE: t is the first
 //   sample outside the pitch, up to STEP late; a crossing that re-enters within one step is missed).
-// - Each inside->outside transition (x or y outside 0..1) is one out-of-play, reported once. Restarts are
+// - Each inside->outside transition (x or y outside 0..1; x exactly 0/1 counts as on the goal line, since UI spots are clamped) is one out-of-play, reported once. Restarts are
 //   not simulated (the ball is not put back), so play after a restart is not re-checked.
 // - Past a goal line with y inside the goal mouth (rules.goalHalf) = goal for the team that attacks that
 //   end (team 0 attacks x=1); restart = kick-off at centre by the conceding team. Bar height (z) ignored.
@@ -23,8 +23,7 @@ import {stateAt, duration, malformed, isBallEv} from './simulation-engine.js';
 // - Offside is not evaluated (rules.offside is false for 7v7).
 const STEP = .05;
 const EPS = 1e-9;
-const outside = b => b.x < 0 || b.x > 1 || b.y < 0 || b.y > 1;
-const clamp01 = v => Math.min(1, Math.max(0, v));
+const outside = b => b.x <= 0 || b.x >= 1 || b.y < 0 || b.y > 1;
 
 export function matchFlow(setup, events) {
   const rules = FORMATS[setup.format];
@@ -45,15 +44,15 @@ export function matchFlow(setup, events) {
       const last = ballEvs.filter(e => e.t <= t).pop();
       const toucher = last ? teamOf(last.actor) : (setup.ball.owner != null ? teamOf(setup.ball.owner) : 0);
       const at = {x: clamp01(b.x), y: clamp01(b.y)};
-      if (b.x < 0 || b.x > 1) {
-        const attacker = b.x > 1 ? 0 : 1;
+      if (b.x <= 0 || b.x >= 1) {
+        const attacker = b.x >= 1 ? 0 : 1;
         if (Math.abs(b.y - .5) <= rules.goalHalf) {
           score[attacker]++;
           restarts.push({t, kind: 'kickoff', team: 1 - attacker, at: {x: .5, y: .5}});
         } else if (toucher !== attacker) {
           restarts.push({t, kind: 'corner', team: attacker, at: {x: at.x, y: b.y < .5 ? 0 : 1}});
         } else {
-          const x = b.x > 1 ? 1 - rules.goalKickX : rules.goalKickX;
+          const x = b.x >= 1 ? 1 - rules.goalKickX : rules.goalKickX;
           restarts.push({t, kind: 'goal-kick', team: 1 - attacker, at: {x, y: .5}});
         }
       } else {

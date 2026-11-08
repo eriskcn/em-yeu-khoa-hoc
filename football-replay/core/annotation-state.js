@@ -50,9 +50,6 @@ export function updateAnnotation(state, id, patch) {
 export const setHidden = (state, id, hidden) => updateAnnotation(state, id, {hidden});
 export const setTimeWindow = (state, id, from, to) => updateAnnotation(state, id, {from, to});
 
-export const visibleAt = (state, t) =>
-  state.items.filter(a => !a.hidden && (a.from === null || t >= a.from) && (a.to === null || t <= a.to));
-
 export function saveView(state, name, t = null) {
   if (!timeOk(t)) throw new Error('bad view time');
   const view = {name, t, hiddenIds: state.items.filter(a => a.hidden).map(a => a.id)};
@@ -64,8 +61,6 @@ export function applyView(state, name) {
   if (!view) throw new Error(`no view ${name}`);
   return {...state, items: state.items.map(a => ({...a, hidden: view.hiddenIds.includes(a.id)}))};
 }
-
-export const listViews = state => state.views.map(v => v.name);
 
 export const serializeAnnotations = state =>
   JSON.stringify({items: state.items, nextId: state.nextId, views: state.views});

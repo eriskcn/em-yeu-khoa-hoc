@@ -17,6 +17,14 @@ export function validateEvents(setup, events, mode = 'simulate') {
   for (const i of resolveBall(setup, good, Infinity).issues) {
     issues.push({...i, level: i.code === 'manual-teleport' ? 'flagged' : level});
   }
+  const end = new Map(); // actor -> end of their previous move/dribble
+  for (const ev of good.filter(e => e.type === 'move' || e.type === 'dribble').sort((a, b) => a.t - b.t || a.id - b.id)) {
+    const prev = end.get(ev.actor) ?? -Infinity;
+    if (ev.t < prev && !issues.some(i => i.eventId === ev.id && i.code === 'overlap')) {
+      issues.push({eventId: ev.id, level, code: 'overlap', message: `player ${ev.actor} is already moving`});
+    }
+    end.set(ev.actor, Math.max(prev, ev.t + ev.dur));
+  }
   const team = id => setup.players.find(p => p.id === id).team;
   for (const ev of good) {
     if ((ev.type === 'pass' || ev.type === 'cross') && typeof ev.target === 'number' && team(ev.target) !== team(ev.actor)) {

@@ -10,7 +10,7 @@ import {nextEventTime, prevEventTime} from '../replay/timeline.js';
 import {createHistory} from '../replay/snapshot-manager.js';
 import {analyze} from '../analysis/tactical-analyzer.js';
 import {possessionShare} from '../analysis/passing-analysis.js';
-import {drawPitch, toPx, toNorm, playerRadius, setView} from '../rendering/pitch-renderer.js';
+import {drawPitch, toPx, toNorm, playerRadius, hitRadius, setView} from '../rendering/pitch-renderer.js';
 import {drawPlayer} from '../rendering/player-renderer.js';
 import {drawBall} from '../rendering/ball-renderer.js';
 import {drawAnnotations, drawDraft, drawGhost} from '../rendering/annotation-renderer.js';
@@ -57,13 +57,17 @@ history.reset(snapshot());
 // Report events that the current setup/mode no longer accepts (setup edits can break them).
 function checkEvents() {
   const issues = validateEvents(setup, events, mode);
-  if (issues.length) say(`${issues.length} event issue(s): ${issues[0].message}`);
+  if (!issues.length) return '';
+  const msg = `${issues.length} event issue(s): ${issues[0].message}`;
+  say(msg);
+  return msg;
 }
+const toolHint = id => id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
 function save() {
   try { localStorage.setItem(SAVE_KEY, exportScenario({setup, events, annotations: annos})); } catch { /* storage unavailable or full */ }
 }
-function commit() { history.push(snapshot()); checkEvents(); save(); }
+function commit() { history.push(snapshot()); const m = checkEvents(); save(); return m; }
 
 // matchFlow/possession depend only on setup/events, which are replaced, never mutated.
 let cache = {setup: null, events: null};
@@ -76,7 +80,7 @@ function derived() {
   return cache;
 }
 
-function apply(snap) {
+function apply(snap, msg) {
   if (!snap) return;
   try {
     const d = JSON.parse(snap);
@@ -86,6 +90,7 @@ function apply(snap) {
     events = d.events;
     selectedId = null;
     replay.seek(t);
+    say(msg);
   } catch { say('Could not restore that state.'); }
   invalidate();
 }
@@ -161,10 +166,10 @@ function render() {
 
 // --- events -----------------------------------------------------------------
 function playerAt(pt) {
-  const {w, h} = size, r = playerRadius(w);
+  const {w, h} = size, r = hitRadius(w);
   return [...stateAt(setup, events, t).players].reverse().find(p => {
     const q = toPx(p, w, h);
-    return Math.hypot(pt.x - q.x, pt.y - q.y) < r * 1.2;
+    return Math.hypot(pt.x - q.x, pt.y - q.y) < r;
   });
 }
 
@@ -177,8 +182,10 @@ function addEv(ev) {
   const before = new Set(events.map(e => e.id));
   events = res.events;
   selectedId = events.find(e => !before.has(e.id)).id;
-  commit();
-  if (res.issues.length) say(`Added with warning: ${res.issues[0].message}`);
+  const issue = commit(), warn = res.issues.length ? `Warning: ${res.issues[0].message}` : issue;
+  const num = id => stateAt(setup, events, 0).players.find(p => p.id === id)?.num ?? id;
+  const tgt = ev.target === undefined ? '' : ` -> ${typeof ev.target === 'object' ? 'spot' : ev.target === 'goal' ? 'goal' : num(ev.target)}`;
+  say(`${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
   replay.seek(ev.t + ev.dur); // ready to chain the next action from where this one ends
 }
 
@@ -236,7 +243,7 @@ const drawing = createDrawingController({
   getSize: () => size,
   onDraft: d => { draft = d; invalidate(); },
   onCommit: data => {
-    try { annos = addAnnotation(annos, data); commit(); } catch { say('Could not add that drawing.'); }
+    try { annos = addAnnotation(annos, data); commit(); say('Drawing added'); } catch { say('Could not add that drawing.'); }
     invalidate();
   },
   onTextRequest: p => {
@@ -244,6 +251,7 @@ const drawing = createDrawingController({
     if (!text) return;
     annos = addAnnotation(annos, {type: 'text', pts: [p], text});
     commit();
+    say('Drawing added');
     invalidate();
   }
 });
@@ -293,7 +301,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
     pending = null;
     drawing.cancel();
     toolbar.setTool(id);
-    say(id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`);
+    say(toolHint(id));
     invalidate();
   },
   onFormat: f => {
@@ -374,6 +382,7 @@ const setPhase = id => {
   PHASES_ALL.forEach(([ph, el]) => { el.hidden = ph !== id; });
   toolbar.setTool(PHASES[id][0]);
   tool = PHASES[id][0];
+  say(toolHint(tool));
   pending = null;
   drawing.cancel();
   invalidate();
@@ -392,8 +401,8 @@ const timeline = createTimelinePanel(document.getElementById('timeline'), {
     replay.seek(events.find(e => e.id === id).t);
     invalidate();
   },
-  onUndo: () => apply(history.undo()),
-  onRedo: () => apply(history.redo())
+  onUndo: () => apply(history.undo(), 'Undone'),
+  onRedo: () => apply(history.redo(), 'Redone')
 });
 const analysisPanel = createAnalysisPanel(document.getElementById('analysis'));
 const setupPanel = createSetupPanel(document.getElementById('setup'), {
@@ -435,14 +444,14 @@ window.addEventListener('keydown', e => {
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
   if (e.key === 'Escape') { pending = null; drawing.cancel(); draft = null; invalidate(); }
   else if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); apply(e.shiftKey ? history.redo() : history.undo()); }
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); apply(history.redo()); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); apply(e.shiftKey ? history.redo() : history.undo(), e.shiftKey ? 'Redone' : 'Undone'); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); apply(history.redo(), 'Redone'); }
 });
 window.addEventListener('resize', invalidate);
 const propsBtn = document.getElementById('btn-props');
 propsBtn.addEventListener('click', () => propsBtn.setAttribute('aria-expanded', String(document.body.classList.toggle('props-open'))));
-say('Drag players to set the starting positions, then pick an event tool.');
 setPhase('setup');
+say('Drag players to set the starting positions, then pick an event tool.');
 try {
   const saved = localStorage.getItem(SAVE_KEY);
   if (saved) {

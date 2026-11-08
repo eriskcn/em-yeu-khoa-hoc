@@ -1,4 +1,4 @@
-import {createSetup, setOwner} from '../core/match-state.js';
+import {createSetup, setOwner, clamp01} from '../core/match-state.js';
 import {kickoff} from '../core/scenarios.js';
 import {FORMATS} from '../core/match-rules.js';
 import {stateAt, duration} from '../core/simulation-engine.js';
@@ -35,7 +35,6 @@ const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1};
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
 const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
-const clamp01 = v => Math.min(1, Math.max(0, v));
 
 const canvas = document.getElementById('pitch');
 const ctx = canvas.getContext('2d');

@@ -1,4 +1,4 @@
-import {GOAL, EVENT_TYPES, BALL_TYPES} from './match-rules.js';
+import {goalOf, EVENT_TYPES, BALL_TYPES} from './match-rules.js';
 
 const isPt = o => o !== null && typeof o === 'object' && Number.isFinite(o.x) && Number.isFinite(o.y);
 const byTime = (a, b) => a.t - b.t || a.id - b.id;
@@ -89,7 +89,7 @@ export function resolveBall(setup, events, t) {
     }
     const from = posAt(setup, sorted, ev.actor, ev.t);
     const tg = ev.target;
-    const dest = tg === 'goal' ? GOAL[team(ev.actor)]
+    const dest = tg === 'goal' ? goalOf(setup, team(ev.actor))
       : isPt(tg) ? tg : posAt(setup, sorted, tg, end);
     const at = tt => {
       const u = (tt - ev.t) / ev.dur;
@@ -101,7 +101,7 @@ export function resolveBall(setup, events, t) {
     };
     // A shot toward the defending keeper's goal can be saved by that keeper's save event during the flight.
     const kid = keeperOf(1 - team(ev.actor));
-    const sv = ev.type === 'shot' && Math.abs(dest.x - GOAL[team(ev.actor)].x) < .5
+    const sv = ev.type === 'shot' && Math.abs(dest.x - goalOf(setup, team(ev.actor)).x) < .5
       ? sorted.find(e => e.type === 'save' && e.actor === kid && e.t > ev.t && e.t < end && !consumed.has(e.id)) : null;
     if (sv) {
       consumed.add(sv.id);

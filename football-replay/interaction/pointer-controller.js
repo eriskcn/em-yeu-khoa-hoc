@@ -20,6 +20,7 @@ export function attachPointer(canvas, {down, move, up, pinch, panBy}) {
     up();
   };
   canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return; // right-click is for the context menu
     pts.set(e.pointerId, pt(e));
     if (pts.size === 2 && (pinch || panBy)) {
       if (active !== null) { active = null; up(); }

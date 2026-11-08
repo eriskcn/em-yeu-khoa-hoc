@@ -19,7 +19,7 @@ import {createDragController} from '../interaction/drag-controller.js';
 import {createDrawingController} from '../interaction/drawing-controller.js';
 import {createToolbar} from './toolbar.js';
 import {identity, zoomAt, pan} from '../interaction/viewport.js';
-import {applyFormation} from '../core/formations.js';
+import {applyFormation, flipOrientation} from '../core/formations.js';
 import {exportScenario, importScenario} from '../core/scenario-io.js';
 import {createSetupPanel} from './setup-panel.js';
 import {createTimelinePanel} from './timeline-panel.js';
@@ -27,11 +27,13 @@ import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor} from './event-editor.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
+import {createSelection, toggle, clear, has, moveSelected} from '../interaction/selection.js';
+import {createContextMenu} from './context-menu.js';
 
 let FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
 let aspect = FORMATS[FORMAT].aspect;
-const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1};
+const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1, save: .4, tackle: .5};
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
 const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
@@ -48,6 +50,7 @@ let t = 0, selectedId = null, pending = null, draft = null, hideDrawings = false
 let size = {w: 0, h: 0};
 let view = identity, showGhost = false, phase = 'setup', formationNames = {};
 let queued = false;
+let sel = createSelection();
 
 const say = msg => { statusEl.textContent = msg; };
 const history = createHistory(100);
@@ -62,7 +65,8 @@ function checkEvents() {
   say(msg);
   return msg;
 }
-const toolHint = id => id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
+const toolHint = id => id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
+  : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
 function save() {
   try { localStorage.setItem(SAVE_KEY, exportScenario({setup, events, annotations: annos})); } catch { /* storage unavailable or full */ }
@@ -89,6 +93,7 @@ function apply(snap, msg) {
     setup = d.setup;
     events = d.events;
     selectedId = null;
+    sel = createSelection();
     replay.seek(t);
     say(msg);
   } catch { say('Could not restore that state.'); }
@@ -140,6 +145,15 @@ function render() {
   s.players.forEach(p => {
     const px = toPx(p, w, h);
     drawPlayer(ctx, px, r, TEAM_COLORS[p.team], p.num);
+    if (has(sel, p.id)) {
+      ctx.beginPath();
+      ctx.arc(px.x, px.y, r * 1.45, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     if (p.id === pending || p.id === s.ball.owner) {
       ctx.beginPath();
       ctx.arc(px.x, px.y, r * 1.45, 0, Math.PI * 2);
@@ -185,7 +199,8 @@ function addEv(ev) {
   const issue = commit(), warn = res.issues.length ? `Warning: ${res.issues[0].message}` : issue;
   const num = id => stateAt(setup, events, 0).players.find(p => p.id === id)?.num ?? id;
   const tgt = ev.target === undefined ? '' : ` -> ${typeof ev.target === 'object' ? 'spot' : ev.target === 'goal' ? 'goal' : num(ev.target)}`;
-  say(`${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
+  const who = ev.type === 'phase' ? ev.kind : `${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt}`;
+  say(`${who[0].toUpperCase() + who.slice(1)} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
   replay.seek(ev.t + ev.dur); // ready to chain the next action from where this one ends
 }
 
@@ -193,6 +208,7 @@ function deleteSelected() {
   if (selectedId === null) { say('Select an event marker on the timeline first.'); return; }
   events = removeEvent(events, selectedId);
   selectedId = null;
+  sel = createSelection();
   commit();
   replay.seek(t);
   invalidate();
@@ -208,6 +224,11 @@ function clickTool(pt) {
     invalidate();
     return;
   }
+  if (tool === 'save') {
+    if (!p) { say('Click the goalkeeper.'); return; }
+    addEv({type: 'save', actor: p.id, t, dur: DUR.save});
+    return;
+  }
   if (tool === 'sub') {
     if (!p) { say('Click the player to substitute off.'); return; }
     const top = Math.max(setup.players.length / 2, ...events.filter(e => e.type === 'sub' && e.team === p.team).map(e => Number(e.on) || 0));
@@ -218,6 +239,7 @@ function clickTool(pt) {
     if (!p) { say('Click the player who performs the action.'); return; }
     pending = p.id;
     say(tool === 'move' || tool === 'dribble' ? 'Click the destination.'
+      : tool === 'tackle' ? 'Click the player being tackled.'
       : tool === 'shot' ? 'Click a spot, or the shooter again to shoot at goal.' : 'Click a player or an empty spot.');
     invalidate();
     return;
@@ -229,6 +251,7 @@ function clickTool(pt) {
   if (tool === 'move' || tool === 'dribble') addEv({type: tool, actor, to: spot, t, dur: DUR[tool]});
   else if (tool === 'shot') addEv({type: 'shot', actor, target: p ? (p.id === actor ? 'goal' : p.id) : spot, t, dur: DUR.shot});
   else if (p && p.id === actor) say('Cancelled.');
+  else if (tool === 'tackle') addEv({type: 'tackle', actor, target: p ? p.id : spot, won: true, t, dur: DUR.tackle});
   else addEv({type: tool, actor, target: p ? p.id : spot, t, dur: DUR[tool]});
 }
 
@@ -257,12 +280,44 @@ const drawing = createDrawingController({
 });
 
 let active = null;
+let groupFrom = null;
+// Dragging a selected player moves every selected player by the same offset.
+const groupDrag = {
+  move(pt) {
+    const n = toNorm(pt, size.w, size.h);
+    setup = moveSelected(setup, sel.ids, n.x - groupFrom.x, n.y - groupFrom.y);
+    groupFrom = n;
+    invalidate();
+  },
+  up() { groupFrom = null; }
+};
+const menu = createContextMenu(document.body, {
+  onPick: ({id, player}) => {
+    if (id === 'toggle') sel = toggle(sel, player.id);
+    else if (id === 'clear') sel = clear(sel);
+    else if (id === 'owner') { setup = setOwner(setup, player.id); commit(); }
+    invalidate();
+  }
+});
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect(), p = playerAt({x: e.clientX - r.left, y: e.clientY - r.top});
+  if (!p) return;
+  const pick = id => ({id, player: p});
+  menu.show(e.clientX, e.clientY, [
+    {id: pick('toggle'), label: `${has(sel, p.id) ? 'Deselect' : 'Select'} #${p.num}`},
+    {id: pick('owner'), label: 'Give ball', disabled: t !== 0},
+    {id: pick('clear'), label: 'Clear selection', disabled: sel.ids.size === 0}
+  ]);
+});
 attachPointer(canvas, {
   down(pt) {
     replay.pause();
     if (DRAW_TOOLS.includes(tool)) { active = drawing; return drawing.down(pt); }
     if (tool === 'drag') {
       if (t !== 0) { say('Go to 0.00 s to move players into the starting setup.'); return false; }
+      const hit = playerAt(pt);
+      if (hit && sel.ids.size > 1 && has(sel, hit.id)) { groupFrom = toNorm(pt, size.w, size.h); active = groupDrag; return true; }
       active = drag;
       return drag.down(pt);
     }
@@ -277,7 +332,7 @@ attachPointer(canvas, {
     active = null;
     if (!was) return; // a second finger already cancelled the drag
     was.up();
-    if (was === drag) commit();
+    if (was === drag || was === groupDrag) commit();
   }
 });
 
@@ -291,12 +346,14 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
   mode,
   groups: [
     {name: 'Setup', phase: 'setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
-    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['sub', 'Substitute']]},
+    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['tackle', 'Tackle'], ['save', 'Save'], ['sub', 'Substitute'],
+      ['half-time', 'Half-time'], ['full-time', 'Full-time']]},
     {name: 'Draw', phase: 'analysis', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
       ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text'],
       ['defline', 'Def. line'], ['press', 'Press zone'], ['lane', 'Lane']]}
   ],
   onTool: id => {
+    if (id === 'half-time' || id === 'full-time') { addEv({type: 'phase', kind: id, t, dur: 0}); return; }
     tool = id;
     pending = null;
     drawing.cancel();
@@ -313,6 +370,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
     events = [];
     annos = createAnnotations();
     selectedId = null;
+    sel = createSelection();
     history.reset(snapshot());
     save();
     replay.seek(0);
@@ -327,15 +385,17 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
     events = [];
     annos = createAnnotations();
     selectedId = null;
+    sel = createSelection();
     commit();
     replay.seek(0);
     invalidate();
   },
   onKickoff: () => {
     if ((events.length || annos.items.length) && !confirm('Replace the current scenario with a kick-off?')) return;
-    ({setup, events} = kickoff(FORMAT));
+    ({setup, events} = kickoff(FORMAT, !!setup.flipped));
     annos = createAnnotations();
     selectedId = null;
+    sel = createSelection();
     commit();
     replay.seek(0);
     invalidate();
@@ -362,6 +422,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
       events = r.events;
       annos = r.annotations;
       selectedId = null;
+      sel = createSelection();
       formationNames = {};
       toolbar.setFormat(FORMAT);
       history.reset(snapshot());
@@ -407,7 +468,14 @@ const timeline = createTimelinePanel(document.getElementById('timeline'), {
 const analysisPanel = createAnalysisPanel(document.getElementById('analysis'));
 const setupPanel = createSetupPanel(document.getElementById('setup'), {
   onChange: i => {
-    if (i.kind === 'flip') { say('Flip sides is not supported yet: goals and kick-off assume team 1 attacks left.'); return; }
+    if (i.kind === 'flip') {
+      if (t !== 0 || events.length) { say('Go to 0.00 s and clear all events before flipping sides.'); return; }
+      setup = flipOrientation(setup);
+      commit();
+      say('Sides flipped.');
+      invalidate();
+      return;
+    }
     if (t !== 0) { say('Go to 0.00 s to change formations.'); return; }
     setup = applyFormation(setup, i.team, i.name);
     formationNames = {...formationNames, [i.team]: i.name};

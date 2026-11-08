@@ -44,6 +44,7 @@ a.back{order:9;margin-left:auto}
 body.props-open #props{transform:none;visibility:visible}
 #props>div:not(:empty){padding:6px 2px;border-bottom:1px solid #000}
 #rotate{display:none}
+#btn-tl{display:none}
 @media (orientation:landscape) and (min-aspect-ratio:8/5){
 .wrap{grid-template-columns:112px minmax(0,1fr) clamp(240px,30vw,340px);grid-template-areas:"head head head" "tools view props" "time time time"}
 #props{position:static;grid-area:props;width:auto;transform:none;visibility:visible;box-shadow:none}
@@ -60,16 +61,24 @@ header{padding:0 8px}
 #timeline{padding:2px 8px}
 #timeline .tl-panel button,#timeline .tl-panel select,#timeline .tl-scrub{min-height:32px}
 #timeline .tl-panel{gap:2px 8px}
-#status{min-height:20px;font-size:11px}
 #viewer{padding:2px}
-#viewer canvas{margin-top:2px;width:min(100%,calc((100dvh - 124px) * 1.4))}
+#viewer canvas{margin-top:2px;width:min(100%,calc((100dvh - 40px) * 1.5))}
+/* timeline overlays the pitch bottom, status floats as a toast: pitch gets the full height (#44) */
+#timeline{grid-area:view;align-self:end;z-index:5;background:#232323d9;max-height:50dvh;overflow:auto}
+#timeline .tl-track{display:none}
+body.tl-open #timeline .tl-track{display:block}
+#status{position:fixed;top:36px;left:116px;z-index:4;max-width:50vw;min-height:0;font-size:11px;background:#1e3a8ae6;pointer-events:none}
+#status:empty{display:none}
+#btn-tl{display:inline-flex;order:3}
 }
 @media (pointer:fine){
 button,select,input[type=checkbox],a.back,summary,label{min-height:30px}
 #timeline .tl-panel button,#timeline .tl-panel select,#timeline .tl-scrub{min-height:30px;min-width:30px}
 #props .ee-panel :is(button,select,input),#props .ap-panel :is(button,input){min-height:30px;min-width:30px}
-#viewer canvas{width:min(100%,calc((100dvh - 150px) * 1.4))}
 #props,.tb-menu{top:40px}
+}
+@media (pointer:fine) and (min-height:481px){
+#viewer canvas{width:min(100%,calc((100dvh - 150px) * 1.4))}
 }
 @media (orientation:portrait) and (max-width:700px){
 #rotate{display:flex;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:18px;background:#0b1120}
@@ -99,5 +108,6 @@ button,select,input[type=checkbox],a.back,summary,label{min-height:30px}
 </div>
 <div id="rotate" role="alert">Rotate your phone to landscape to use the simulator.</div>
 <script type="module" src="./ui/app.js"></script>
+<script type="module" src="./ui/layout.js"></script>
 </body>
 </html>

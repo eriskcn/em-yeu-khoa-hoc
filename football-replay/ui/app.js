@@ -1,7 +1,7 @@
 import {createSetup, setOwner, clamp01} from '../core/match-state.js';
 import {kickoff} from '../core/scenarios.js';
 import {FORMATS} from '../core/match-rules.js';
-import {stateAt, duration} from '../core/simulation-engine.js';
+import {stateAt, duration, isBallEv} from '../core/simulation-engine.js';
 import {addEvent, updateEvent, removeEvent} from '../core/event-engine.js';
 import {validateEvents} from '../core/action-validator.js';
 import {createAnnotations, addAnnotation, clearAnnotations, setHidden, setTimeWindow, removeAnnotation, saveView, applyView, serializeAnnotations, restoreAnnotations} from '../core/annotation-state.js';
@@ -66,6 +66,7 @@ function checkEvents() {
   return msg;
 }
 const toolHint = id => id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
+  : id === 'move' ? 'Click a player, then the destination. The time stays, so others can run in the same frame.'
   : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
 function save() {
@@ -201,7 +202,8 @@ function addEv(ev) {
   const tgt = ev.target === undefined ? '' : ` -> ${typeof ev.target === 'object' ? 'spot' : ev.target === 'goal' ? 'goal' : num(ev.target)}`;
   const who = ev.type === 'phase' ? ev.kind : `${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt}`;
   say(`${who[0].toUpperCase() + who.slice(1)} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
-  replay.seek(ev.t + ev.dur); // ready to chain the next action from where this one ends
+  // Ball actions chain, so move to where this one ends; runs and subs keep the time so more can start in the same frame.
+  replay.seek(isBallEv(ev) ? ev.t + ev.dur : ev.t);
 }
 
 function deleteSelected() {

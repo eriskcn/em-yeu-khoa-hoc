@@ -47,6 +47,12 @@ function checkSetup(s) {
   if (!isObj(s) || !FORMATS[s.format] || !Array.isArray(s.players) || !isObj(s.ball)) throw new Error('bad setup');
   if (s.players.length !== FORMATS[s.format].formation.length * 2) throw new Error('bad setup: player count');
   if (!num(s.ball.x) || !num(s.ball.y)) throw new Error('bad setup: ball');
+  const ids = new Set();
+  for (const p of s.players) {
+    if (!isObj(p) || !num(p.x) || !num(p.y) || !Number.isInteger(p.id) || ids.has(p.id) || (p.team !== 0 && p.team !== 1)) throw new Error('bad setup: player');
+    ids.add(p.id);
+  }
+  if (s.ball.owner != null && !ids.has(s.ball.owner)) throw new Error('bad setup: ball owner');
   return s;
 }
 

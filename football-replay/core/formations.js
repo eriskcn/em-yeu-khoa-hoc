@@ -2,8 +2,8 @@ import {FORMATS} from './match-rules.js';
 
 // Named formations as outfield rows, back to front (GK is implicit). Role per row: first DF, last FW, others MF.
 // ORIENTATION: setup.flipped (absent = false) means team 0 attacks LEFT. flipOrientation mirrors every x and
-// toggles that flag. GOAL (match-rules.js) and kickoff() still assume team 0 attacks right, so when
-// setup.flipped is true the lead must use GOAL[1-team] / swap team sides there (and the "own half" tests).
+// toggles that flag. goalOf (match-rules.js), kickoff(format, flipped), matchFlow and the
+// offside check honour it.
 const ROWS = {
   5: {'2-2': [2, 2], '1-2-1': [1, 2, 1]},
   7: {'2-3-1': [2, 3, 1], '3-2-1': [3, 2, 1], '2-2-2': [2, 2, 2]},

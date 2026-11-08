@@ -1,4 +1,4 @@
-import {FORMATS} from './match-rules.js';
+import {FORMATS, goalOf} from './match-rules.js';
 import {malformed, resolveBall, stateAt} from './simulation-engine.js';
 
 // Edit mode flags rule breaks; simulate mode rejects them. Malformed data is rejected in both.
@@ -54,7 +54,7 @@ function offside(setup, events, ev) {
   const {players, ball} = stateAt(setup, events, ev.t);
   const r = players.find(p => p.id === ev.target);
   if (r.team !== players.find(p => p.id === ev.actor).team) return false;
-  const dir = r.team === 0 ? 1 : -1;
+  const dir = goalOf(setup, r.team).x === 1 ? 1 : -1;
   const a = x => x * dir; // distance along the attacking direction
   const line = players.filter(p => p.team !== r.team).map(p => a(p.x)).sort((u, v) => v - u)[1];
   return a(r.x) > .5 * dir && a(r.x) > a(ball.x) && a(r.x) > line;

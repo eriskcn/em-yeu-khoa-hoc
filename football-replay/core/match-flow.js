@@ -1,4 +1,4 @@
-import {FORMATS, GOAL} from './match-rules.js';
+import {FORMATS, goalOf} from './match-rules.js';
 import {setOwner, moveBall, clamp01} from './match-state.js';
 import {stateAt, duration, malformed, isBallEv} from './simulation-engine.js';
 
@@ -9,7 +9,7 @@ import {stateAt, duration, malformed, isBallEv} from './simulation-engine.js';
 // - Each inside->outside transition (x or y outside 0..1; x exactly 0/1 counts as on the goal line, since UI spots are clamped) is one out-of-play, reported once. Restarts are
 //   not simulated (the ball is not put back), so play after a restart is not re-checked.
 // - Past a goal line with y inside the goal mouth (rules.goalHalf) = goal for the team that attacks that
-//   end (team 0 attacks x=1); restart = kick-off at centre by the conceding team. Bar height (z) ignored.
+//   end (team 0 attacks x=1, or x=0 when setup.flipped); restart = kick-off at centre by the conceding team. Bar height (z) ignored.
 // - Past a goal line elsewhere: last toucher is the defender -> corner for the attackers (nearer corner);
 //   last toucher is the attacker -> goal kick for the defenders (at rules.goalKickX, y .5).
 // - Past a touchline: throw-in for the team opposite the last toucher, at the exit point on the line.
@@ -45,7 +45,7 @@ export function matchFlow(setup, events) {
       const toucher = last ? teamOf(last.actor) : (setup.ball.owner != null ? teamOf(setup.ball.owner) : 0);
       const at = {x: clamp01(b.x), y: clamp01(b.y)};
       if (b.x <= 0 || b.x >= 1) {
-        const attacker = b.x >= 1 ? 0 : 1;
+        const attacker = (b.x >= 1) !== !!setup.flipped ? 0 : 1;
         if (Math.abs(b.y - .5) <= rules.goalHalf) {
           score[attacker]++;
           restarts.push({t, kind: 'kickoff', team: 1 - attacker, at: {x: .5, y: .5}});
@@ -74,7 +74,8 @@ export function matchFlow(setup, events) {
 // New setup with the ball at restart.at, owned by the nearest player of restart.team (throw-in, corner, ...).
 export function restartSetup(setup, restart) {
   // penalty: spot .1 from the centre of the goal the taking team attacks; other kinds (free-kick, ...) use restart.at.
-  const {x, y} = restart.kind === 'penalty' ? {x: GOAL[restart.team].x + (restart.team === 0 ? -.1 : .1), y: .5} : restart.at;
+  const gx = goalOf(setup, restart.team).x;
+  const {x, y} = restart.kind === 'penalty' ? {x: gx + (gx === 1 ? -.1 : .1), y: .5} : restart.at;
   const near = setup.players.filter(p => p.team === restart.team)
     .reduce((a, b) => (Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a));
   const owned = setOwner(setup, near.id); // setOwner snaps the ball to the player; moveBall drops owner

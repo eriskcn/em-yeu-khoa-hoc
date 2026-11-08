@@ -31,7 +31,7 @@ import {matchFlow} from '../core/match-flow.js';
 let FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
 let aspect = FORMATS[FORMAT].aspect;
-const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1};
+const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1, save: .4, tackle: .5};
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
 const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
@@ -62,7 +62,8 @@ function checkEvents() {
   say(msg);
   return msg;
 }
-const toolHint = id => id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
+const toolHint = id => id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
+  : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
 function save() {
   try { localStorage.setItem(SAVE_KEY, exportScenario({setup, events, annotations: annos})); } catch { /* storage unavailable or full */ }
@@ -185,7 +186,8 @@ function addEv(ev) {
   const issue = commit(), warn = res.issues.length ? `Warning: ${res.issues[0].message}` : issue;
   const num = id => stateAt(setup, events, 0).players.find(p => p.id === id)?.num ?? id;
   const tgt = ev.target === undefined ? '' : ` -> ${typeof ev.target === 'object' ? 'spot' : ev.target === 'goal' ? 'goal' : num(ev.target)}`;
-  say(`${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
+  const who = ev.type === 'phase' ? ev.kind : `${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt}`;
+  say(`${who[0].toUpperCase() + who.slice(1)} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
   replay.seek(ev.t + ev.dur); // ready to chain the next action from where this one ends
 }
 
@@ -208,6 +210,11 @@ function clickTool(pt) {
     invalidate();
     return;
   }
+  if (tool === 'save') {
+    if (!p) { say('Click the goalkeeper.'); return; }
+    addEv({type: 'save', actor: p.id, t, dur: DUR.save});
+    return;
+  }
   if (tool === 'sub') {
     if (!p) { say('Click the player to substitute off.'); return; }
     const top = Math.max(setup.players.length / 2, ...events.filter(e => e.type === 'sub' && e.team === p.team).map(e => Number(e.on) || 0));
@@ -218,6 +225,7 @@ function clickTool(pt) {
     if (!p) { say('Click the player who performs the action.'); return; }
     pending = p.id;
     say(tool === 'move' || tool === 'dribble' ? 'Click the destination.'
+      : tool === 'tackle' ? 'Click the player being tackled.'
       : tool === 'shot' ? 'Click a spot, or the shooter again to shoot at goal.' : 'Click a player or an empty spot.');
     invalidate();
     return;
@@ -229,6 +237,7 @@ function clickTool(pt) {
   if (tool === 'move' || tool === 'dribble') addEv({type: tool, actor, to: spot, t, dur: DUR[tool]});
   else if (tool === 'shot') addEv({type: 'shot', actor, target: p ? (p.id === actor ? 'goal' : p.id) : spot, t, dur: DUR.shot});
   else if (p && p.id === actor) say('Cancelled.');
+  else if (tool === 'tackle') addEv({type: 'tackle', actor, target: p ? p.id : spot, won: true, t, dur: DUR.tackle});
   else addEv({type: tool, actor, target: p ? p.id : spot, t, dur: DUR[tool]});
 }
 
@@ -291,12 +300,14 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
   mode,
   groups: [
     {name: 'Setup', phase: 'setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
-    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['sub', 'Substitute']]},
+    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['tackle', 'Tackle'], ['save', 'Save'], ['sub', 'Substitute'],
+      ['half-time', 'Half-time'], ['full-time', 'Full-time']]},
     {name: 'Draw', phase: 'analysis', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
       ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text'],
       ['defline', 'Def. line'], ['press', 'Press zone'], ['lane', 'Lane']]}
   ],
   onTool: id => {
+    if (id === 'half-time' || id === 'full-time') { addEv({type: 'phase', kind: id, t, dur: 0}); return; }
     tool = id;
     pending = null;
     drawing.cancel();

@@ -6,6 +6,8 @@ const lerp = (a, b, u) => ({x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u})
 
 export const duration = events => events.reduce((m, e) => Math.max(m, e.t + (e.dur ?? 0)), 0);
 
+const MAX_T = 600;
+
 // Structural problem with an event (message) or null. Such events are ignored by stateAt.
 export function malformed(setup, ev) {
   if (!ev || typeof ev !== 'object') return 'event is not an object';
@@ -13,10 +15,12 @@ export function malformed(setup, ev) {
   if (!EVENT_TYPES.includes(ev.type)) return `unknown type: ${ev.type}`;
   if (ev.type === 'phase') {
     if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
+    if (ev.t > MAX_T) return `t must be <= ${MAX_T}`;
     return ['half-time', 'full-time'].includes(ev.kind) ? null : 'phase kind must be half-time or full-time';
   }
   if (ev.type === 'sub') {
     if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
+    if (ev.t > MAX_T) return `t must be <= ${MAX_T}`;
     if (ev.team !== 0 && ev.team !== 1) return 'sub needs team 0 or 1';
     if (!has(ev.off) || setup.players.find(p => p.id === ev.off).team !== ev.team) return `sub off must be a player of team ${ev.team}`;
     if (ev.on === undefined || ev.on === null || ev.on === '') return 'sub needs an on number/label';
@@ -24,7 +28,9 @@ export function malformed(setup, ev) {
   }
   if (!has(ev.actor)) return `unknown actor: ${ev.actor}`;
   if (!Number.isFinite(ev.t) || ev.t < 0) return 't must be a number >= 0';
+  if (ev.t > MAX_T) return `t must be <= ${MAX_T}`;
   if (!Number.isFinite(ev.dur) || ev.dur <= 0) return 'dur must be a number > 0';
+  if (ev.dur > MAX_T) return `dur must be <= ${MAX_T}`;
   if (['bend', 'lift'].some(k => ev[k] !== undefined && !Number.isFinite(ev[k]))) return 'bend/lift must be numbers';
   if ((ev.type === 'move' || ev.type === 'dribble') && !isPt(ev.to)) return `${ev.type} needs a 'to' point`;
   if (ev.type === 'tackle' && !has(ev.target)) return 'tackle needs a target player';

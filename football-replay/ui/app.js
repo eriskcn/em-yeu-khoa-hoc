@@ -1,4 +1,4 @@
-import {createSetup, setOwner} from '../core/match-state.js';
+import {createSetup, setOwner, clamp01} from '../core/match-state.js';
 import {kickoff} from '../core/scenarios.js';
 import {FORMATS} from '../core/match-rules.js';
 import {stateAt, duration} from '../core/simulation-engine.js';
@@ -9,6 +9,7 @@ import {createReplay} from '../replay/replay-engine.js';
 import {nextEventTime, prevEventTime} from '../replay/timeline.js';
 import {createHistory} from '../replay/snapshot-manager.js';
 import {analyze} from '../analysis/tactical-analyzer.js';
+import {possessionShare} from '../analysis/passing-analysis.js';
 import {drawPitch, toPx, toNorm, playerRadius, setView} from '../rendering/pitch-renderer.js';
 import {drawPlayer} from '../rendering/player-renderer.js';
 import {drawBall} from '../rendering/ball-renderer.js';
@@ -31,11 +32,9 @@ let FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
 let aspect = FORMATS[FORMAT].aspect;
 const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1};
-const EVENT_TOOLS = Object.keys(DUR);
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
 const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
-const clamp01 = v => Math.min(1, Math.max(0, v));
 
 const canvas = document.getElementById('pitch');
 const ctx = canvas.getContext('2d');
@@ -60,7 +59,22 @@ function checkEvents() {
   const issues = validateEvents(setup, events, mode);
   if (issues.length) say(`${issues.length} event issue(s): ${issues[0].message}`);
 }
-function commit() { history.push(snapshot()); checkEvents(); }
+const SAVE_KEY = 'football-replay:scenario';
+function save() {
+  try { localStorage.setItem(SAVE_KEY, exportScenario({setup, events, annotations: annos})); } catch { /* storage unavailable or full */ }
+}
+function commit() { history.push(snapshot()); checkEvents(); save(); }
+
+// matchFlow/possession depend only on setup/events, which are replaced, never mutated.
+let cache = {setup: null, events: null};
+function derived() {
+  if (cache.setup !== setup || cache.events !== events) {
+    const d = duration(events);
+    cache = {setup, events, flow: matchFlow(setup, events),
+      possession: d > 0 ? possessionShare(x => stateAt(setup, events, x), d) : null};
+  }
+  return cache;
+}
 
 function apply(snap) {
   if (!snap) return;
@@ -107,8 +121,10 @@ function render() {
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth, h = w / aspect;
   size = {w, h};
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+  }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const s = stateAt(setup, events, t), r = playerRadius(w);
   drawPitch(ctx, w, h);
@@ -135,11 +151,12 @@ function render() {
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
   canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with player ${s.players.find(p => p.id === s.ball.owner).num}`}.`);
-  const f = matchFlow(setup, events);
+  const {flow: f, possession} = derived();
   flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
     ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '');
-  analysisPanel.update(analyze({state: s, events, aspect, t, duration: duration(events),
-    stateAt: x => stateAt(setup, events, x)}));
+  const a = analyze({state: s, events, aspect, t});
+  a.approximate.possession = possession;
+  analysisPanel.update(a);
 }
 
 // --- events -----------------------------------------------------------------
@@ -186,8 +203,8 @@ function clickTool(pt) {
   }
   if (tool === 'sub') {
     if (!p) { say('Click the player to substitute off.'); return; }
-    const used = events.filter(e => e.type === 'sub' && e.team === p.team).length;
-    addEv({type: 'sub', team: p.team, off: p.id, on: String(setup.players.length / 2 + used + 1), t, dur: 0});
+    const top = Math.max(setup.players.length / 2, ...events.filter(e => e.type === 'sub' && e.team === p.team).map(e => Number(e.on) || 0));
+    addEv({type: 'sub', team: p.team, off: p.id, on: String(top + 1), t, dur: 0});
     return;
   }
   if (pending === null) {
@@ -288,6 +305,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
     annos = createAnnotations();
     selectedId = null;
     history.reset(snapshot());
+    save();
     replay.seek(0);
     say(`Format: ${FORMATS[f].label}`);
     invalidate();
@@ -338,6 +356,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
       formationNames = {};
       toolbar.setFormat(FORMAT);
       history.reset(snapshot());
+      save();
       replay.seek(0);
       const issues = validateEvents(setup, events, mode);
       say(r.warnings.length ? `Imported with ${r.warnings.length} warning(s): ${r.warnings[0]}`
@@ -421,4 +440,17 @@ window.addEventListener('keydown', e => {
 window.addEventListener('resize', invalidate);
 say('Drag players to set the starting positions, then pick an event tool.');
 setPhase('setup');
+try {
+  const saved = localStorage.getItem(SAVE_KEY);
+  if (saved) {
+    const r = importScenario(saved);
+    FORMAT = r.setup.format;
+    aspect = FORMATS[FORMAT].aspect;
+    setup = r.setup;
+    events = r.events;
+    annos = r.annotations;
+    toolbar.setFormat(FORMAT);
+    history.reset(snapshot());
+  }
+} catch { /* no or invalid saved scenario: keep the default */ }
 render();

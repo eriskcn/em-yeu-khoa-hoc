@@ -13,6 +13,15 @@ test('shot past the goal line inside the mouth is a goal and a kick-off for the 
   assert.deepEqual([f.restarts[0].kind, f.restarts[0].team, f.restarts[0].at], ['kickoff', 1, {x: .5, y: .5}]);
 });
 
+test("shot to 'goal' (ends exactly on the line) scores; a saved one does not", () => {
+  const s5 = setOwner(createSetup(7), 5);
+  const goal = {id: 1, type: 'shot', actor: 5, target: 'goal', t: 0, dur: 1};
+  const f = matchFlow(s5, [goal]);
+  assert.deepEqual(f.score, [1, 0]);
+  assert.deepEqual([f.restarts[0].kind, f.restarts[0].team], ['kickoff', 1]);
+  assert.deepEqual(matchFlow(s5, [goal, {id: 2, type: 'save', actor: 7, t: .6, dur: .3}]).score, [0, 0]);
+});
+
 test('over the touchline: throw-in for the opposing team, on the line', () => {
   const f = matchFlow(setup, [shot({x: .5, y: -.2})]);
   assert.deepEqual(f.score, [0, 0]);

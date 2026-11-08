@@ -111,3 +111,18 @@ Gaps left (tracked in the issues, not done): #16 compare-with-setup overlay; #12
 
 Done since M7: Setup/Simulation/Analysis phase shell (#10), formation selects (#11), scenario Export/Import incl. legacy rectangle areas (#9), defensive line / press zone / lane tools and setup ghost (#15, #16), pinch-zoom and two-finger pan (#18, shared view in `rendering/pitch-renderer.js`), goalkeeper `save` and half/full-time in core (no UI tool yet).
 Open gaps: flip sides (core exists; goals and kick-off assume team 1 attacks left), pitch size, UI for save/penalty/half-time (#12, #20), multi-select and context menu (#18), i18n, player/ball radius ignore zoom.
+
+## Audit 2026-11-08 (football-replay rewrite; report only, no code changed)
+Load assumed: one person in one browser tab, scenarios of 1–60 s. Status: A1–A7, A9 Completed (branch `fix/football-replay-audit`); A8 partial (core tests added; `app.js` wiring has no test).
+
+| ID | Priority | Task | Evidence |
+|----|----------|------|----------|
+| A1 | P0 | Shot at `goal` never scores: ball stops at x=1, `matchFlow` needs x>1; the UI clamps spots to 0..1, so score and restarts are unreachable from the UI | probe: score stays 0–0 |
+| A2 | P0 | Cap event `t` and `dur` (e.g. 600 s) in `malformed`; a Start of 5000 s costs ~750 ms per render in `matchFlow` plus ~325 ms in `analyze` | probe timings |
+| A3 | P0 | Validate imported `setup.players` (object, finite x/y, unique ids, team 0/1) and `ball.owner`; today `owner:99` or a `null` player throws on every render | probe: TypeError |
+| A4 | P1 | Flag overlapping move/dribble events of one player (validator checks ball events only); second run makes the player jump (0.50,0.10 → 0.50,0.50 at t=1.0) | probe |
+| A5 | P1 | Compute `matchFlow` and `analyze` possession only when setup/events change, not every frame (14 + 9 ms at 20 s duration, over the 16 ms frame budget) | probe timings |
+| A6 | P1 | Autosave to `localStorage` in the rewrite (old 2.3 was Completed for the PoC; the rewrite has none, so reload loses the scenario) | grep: no localStorage |
+| A7 | P2 | Substitute `on` number from `used` count collides after deleting an earlier sub | code read |
+| A8 | P2 | Tests for A1, A3, A4 and for `app.js` wiring (none exists) | test list |
+| A9 | P3 | Set canvas width/height only when size changes; delete `EVENT_TOOLS`, `listViews`, `visibleAt` (test-only); share one `clamp01` | grep |

@@ -275,6 +275,7 @@ attachPointer(canvas, {
 
 // --- panels -------------------------------------------------------------------
 const toolbar = createToolbar(document.getElementById('toolbar'), {
+  headerRoot: document.querySelector('header'),
   formats: Object.entries(FORMATS).map(([k, f]) => [k, f.label]),
   format: FORMAT,
   phases: [['setup', '1 Setup'], ['sim', '2 Simulation'], ['analysis', '3 Analysis']],
@@ -405,8 +406,8 @@ const setupPanel = createSetupPanel(document.getElementById('setup'), {
     invalidate();
   }
 });
-const PHASES_ALL = [['setup', document.getElementById('setup')], ['sim', document.getElementById('editor')],
-  ['analysis', document.getElementById('annotations')]];
+const PHASES_ALL = [['setup', document.getElementById('setup')], ['sim', document.getElementById('editor')], ['sim', document.getElementById('flow')],
+  ['analysis', document.getElementById('annotations')], ['analysis', document.getElementById('analysis')]];
 const flowEl = document.getElementById('flow');
 const editor = createEventEditor(document.getElementById('editor'), {
   onChange: (id, patch) => {
@@ -438,6 +439,8 @@ window.addEventListener('keydown', e => {
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); apply(history.redo()); }
 });
 window.addEventListener('resize', invalidate);
+const propsBtn = document.getElementById('btn-props');
+propsBtn.addEventListener('click', () => propsBtn.setAttribute('aria-expanded', String(document.body.classList.toggle('props-open'))));
 say('Drag players to set the starting positions, then pick an event tool.');
 setPhase('setup');
 try {

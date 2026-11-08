@@ -6,57 +6,83 @@
 <title>Football Scenario Simulator</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,"Segoe UI",Roboto,sans-serif;background:#0b1120;color:#e2e8f0}
-.wrap{max-width:1000px;margin:0 auto;padding:14px}
-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-h1{font-size:18px;margin:2px 0}
-a.back{color:#e2e8f0;text-decoration:none;font-size:13px;padding:6px 12px;border:1px solid #334155;border-radius:8px;background:#1e293b}
-.tb-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
-.tb-group{font-size:12px;color:#94a3b8;margin-left:6px}
-.format{font-weight:600;padding:6px 10px;background:#1e3a8a;border-radius:8px}
-select{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px}
-label{font-size:13px;display:flex;align-items:center;gap:4px}
-button.tool.on{background:#2563eb;border-color:#2563eb}
-#status{padding:10px 14px;border-radius:8px;background:#1e3a8a;font-size:14px;min-height:42px;display:flex;align-items:center;margin-top:8px}
-#timeline{margin-top:8px}
-.tb-wrap{display:contents}.tb-wrap[hidden]{display:none}
-#flow,#setup,#editor,#annotations{margin-top:8px;font-size:13px}
-button{font:inherit;font-size:14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 12px;cursor:pointer}
-button:hover{border-color:#64748b}
-canvas{width:100%;display:block;border-radius:10px;margin-top:8px;touch-action:none}
-button,select,a.back,input[type=checkbox]{min-height:44px}
-button,a.back{min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+body{margin:0;height:100dvh;overflow:hidden;font-family:system-ui,"Segoe UI",Roboto,sans-serif;background:#1a1a1a;color:#e2e8f0}
+button,select,input[type=checkbox],a.back,summary{min-height:44px}
+button,a.back,summary{min-width:44px;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:13px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:4px 10px;cursor:pointer;text-decoration:none;list-style:none}
+summary::-webkit-details-marker{display:none}
+button:hover,summary:hover{border-color:#64748b}
+button.tool.on,button[aria-pressed=true]{background:#2563eb;border-color:#2563eb}
+select{font:inherit;font-size:13px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:4px 8px}
+label{font-size:13px;display:flex;align-items:center;gap:4px;min-height:44px}
 input[type=checkbox]{min-width:24px}
-label{min-height:44px}
 :focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
-@media (max-width:600px){
-.wrap{display:flex;flex-direction:column;padding:8px}
-header{order:0}h1{font-size:16px}
-#status{order:1;margin-top:4px;min-height:44px;font-size:13px}
-#pitch{order:2}
-#toolbar{order:3}
-#timeline,#flow,#editor,#annotations,#analysis{order:4}
-.tb-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
-.tb-row>*{flex:none}
+.wrap{height:100dvh;display:grid;gap:1px;background:#000;grid-template-columns:112px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"head head" "tools view" "time time"}
+header{grid-area:head;display:flex;align-items:center;gap:6px;padding:2px 8px;background:#232323;min-width:0}
+h1{font-size:14px;margin:0 6px 0 0;white-space:nowrap}
+.tb-phases{display:flex;gap:2px;order:1}
+.tb-phases .tb-group{display:none}
+.tb-menu-wrap{order:2}
+.tb-menu{position:fixed;top:52px;left:8px;z-index:20;display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:min(560px,calc(100vw - 16px));padding:8px;background:#232323;border:1px solid #000;box-shadow:0 8px 24px #000a}
+#btn-props{order:3}
+a.back{order:9;margin-left:auto}
+.tb-group{font-size:11px;color:#94a3b8;margin:6px 0 2px}
+#toolbar{display:contents}
+.tb-tools{grid-area:tools;display:flex;flex-direction:column;gap:4px;padding:6px;background:#232323;overflow:auto}
+.tb-wrap{display:contents}.tb-wrap[hidden]{display:none}
+.tb-tools button{justify-content:flex-start;width:100%}
+#viewer{display:block;grid-area:view;overflow:auto;padding:4px;background:#181818;min-width:0}
+#viewer canvas{display:block;margin-top:4px;touch-action:none;border-radius:6px;width:min(100%,calc((100dvh - 175px) * 1.4))}
+#status{padding:2px 8px;border-radius:6px;background:#1e3a8a;font-size:12px;min-height:26px;display:flex;align-items:center}
+#timeline{grid-area:time;background:#232323;padding:4px 8px}
+#timeline .tl-panel{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 8px;align-items:center}
+#timeline .tl-panel>:nth-child(1){overflow-x:auto;flex-wrap:nowrap;max-width:60vw}
+#timeline .tl-panel>:nth-child(1){scrollbar-width:none}
+#timeline .tl-panel>:nth-child(1)>*{flex:none}
+#timeline .tl-panel>:nth-child(3){grid-column:1/-1;height:28px}
+#timeline .tl-marker{height:24px;min-height:24px!important}
+#props{position:fixed;top:52px;right:0;bottom:0;z-index:10;width:min(340px,75vw);padding:8px;background:#232323;overflow:auto;font-size:13px;box-shadow:-8px 0 24px #000a;transform:translateX(100%);visibility:hidden}
+body.props-open #props{transform:none;visibility:visible}
+#props>div:not(:empty){padding:6px 2px;border-bottom:1px solid #000}
+#rotate{display:none}
+@media (orientation:landscape) and (min-aspect-ratio:8/5){
+.wrap{grid-template-columns:112px minmax(0,1fr) clamp(240px,30vw,340px);grid-template-areas:"head head head" "tools view props" "time time time"}
+#props{position:static;grid-area:props;width:auto;transform:none;visibility:visible;box-shadow:none}
+#btn-props{display:none}
+}
+@media (pointer:fine){
+button,select,input[type=checkbox],a.back,summary,label{min-height:30px}
+#timeline .tl-panel button,#timeline .tl-panel select,#timeline .tl-scrub{min-height:30px;min-width:30px}
+#props .ee-panel :is(button,select,input),#props .ap-panel :is(button,input){min-height:30px;min-width:30px}
+#viewer canvas{width:min(100%,calc((100dvh - 150px) * 1.4))}
+#props,.tb-menu{top:40px}
+}
+@media (orientation:portrait) and (max-width:700px){
+#rotate{display:flex;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:18px;background:#0b1120}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Football Scenario Simulator</h1>
+    <h1>Football Simulator</h1>
+    <button id="btn-props" type="button" aria-controls="props" aria-expanded="false">Panels</button>
     <a class="back" href="../">← Home</a>
   </header>
   <div id="toolbar" role="toolbar" aria-label="Tools"></div>
-  <div id="status" role="status" aria-live="polite"></div>
-  <canvas id="pitch" role="img" aria-label="Football pitch with players and ball. Use the status line and panels for the current state."></canvas>
+  <main id="viewer">
+    <div id="status" role="status" aria-live="polite"></div>
+    <canvas id="pitch" role="img" aria-label="Football pitch with players and ball. Use the status line and panels for the current state."></canvas>
+  </main>
   <div id="timeline"></div>
-  <div id="flow"></div>
-  <div id="setup"></div>
-  <div id="editor"></div>
-  <div id="annotations"></div>
-  <div id="analysis"></div>
+  <aside id="props" aria-label="Properties">
+    <div id="flow"></div>
+    <div id="setup"></div>
+    <div id="editor"></div>
+    <div id="annotations"></div>
+    <div id="analysis"></div>
+  </aside>
 </div>
+<div id="rotate" role="alert">Rotate your phone to landscape to use the simulator.</div>
 <script type="module" src="./ui/app.js"></script>
 </body>
 </html>

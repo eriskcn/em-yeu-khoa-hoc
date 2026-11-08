@@ -161,6 +161,43 @@ test('area cancel discards; two vertices never commit', () => {
   assert.equal(out.drafts.at(-1), null);
 });
 
+const P = (x, y) => ({x, y});
+const kinds = {
+  defline: {type: 'defline', pts: [P(.3, .1), P(.3, .9)]},
+  press: {type: 'press', pts: [P(.1, .1), P(.5, .1), P(.5, .5), P(.1, .5)], color: '#ef4444'},
+  lane: {type: 'lane', pts: [P(.1, .1), P(.6, .4)], width: .03},
+};
+
+test('new kinds validate and round trip', () => {
+  let s = createAnnotations();
+  for (const k of Object.values(kinds)) s = addAnnotation(s, k);
+  assert.deepEqual(restoreAnnotations(serializeAnnotations(s)), s);
+  const bad = [
+    {...kinds.defline, pts: [P(.1, .1), P(.5, .5)]},
+    {...kinds.defline, pts: [P(.1, .1)]},
+    {...kinds.press, pts: kinds.press.pts.slice(0, 2)},
+    {...kinds.lane, width: 0},
+    {...kinds.lane, width: 'x'},
+    {...kinds.lane, pts: [P(.1, .1), P(2, .4)]},
+  ];
+  for (const b of bad) assert.throws(() => addAnnotation(createAnnotations(), b), JSON.stringify(b));
+});
+
+test('controller: defline snaps, lane has width, press closes with preset colour', () => {
+  let r = rig('defline');
+  drag(r.c, px(.3, .2), px(.5, .25));
+  assert.equal(r.out.commits[0].pts[1].y, r.out.commits[0].pts[0].y);
+  addAnnotation(createAnnotations(), r.out.commits[0]);
+  r = rig('lane');
+  drag(r.c, px(.2, .2), px(.6, .5));
+  assert.ok(r.out.commits[0].width > 0);
+  addAnnotation(createAnnotations(), r.out.commits[0]);
+  r = rig('press');
+  r.c.down(px(.2, .2)); r.c.down(px(.6, .2)); r.c.down(px(.6, .6)); r.c.down(px(.2, .2));
+  assert.equal(r.out.commits[0].type, 'press');
+  addAnnotation(createAnnotations(), r.out.commits[0]);
+});
+
 test('text click requests text', () => {
   const {c, out} = rig('text');
   assert.equal(c.down(px(.5, .5)), false);

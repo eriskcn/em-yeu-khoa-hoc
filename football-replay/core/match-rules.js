@@ -31,6 +31,6 @@ export const FORMATS = {
 
 // Goal centre each team shoots at (normalised); same for every format.
 export const GOAL = {0: {x: 1, y: .5}, 1: {x: 0, y: .5}};
-export const EVENT_TYPES = ['move', 'pass', 'cross', 'shot', 'dribble', 'tackle', 'sub'];
+export const EVENT_TYPES = ['move', 'pass', 'cross', 'shot', 'dribble', 'tackle', 'sub', 'save', 'phase'];
 // Events that involve the ball: they may not overlap in time.
 export const BALL_TYPES = ['pass', 'cross', 'shot', 'dribble', 'tackle'];

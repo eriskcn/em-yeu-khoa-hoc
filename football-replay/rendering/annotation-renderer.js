@@ -1,5 +1,6 @@
 // Pure drawing of annotations. Points are normalised; toPx maps them to the pitch.
 import {toPx} from './pitch-renderer.js';
+import {drawPlayer} from './player-renderer.js';
 
 function head(ctx, from, to, size) {
   const a = Math.atan2(to.y - from.y, to.x - from.x);
@@ -31,6 +32,14 @@ function shape(ctx, a, q, w) {
   } else if (a.type === 'area') {
     path(ctx, q); ctx.closePath(); ctx.fillStyle = a.color + '40'; ctx.fill();
     ctx.setLineDash([8, 5]); ctx.stroke();
+  } else if (a.type === 'defline' && q.length === 2) {
+    ctx.setLineDash([12, 8]); path(ctx, q); ctx.stroke();
+  } else if (a.type === 'press') {
+    path(ctx, q); ctx.closePath(); ctx.fillStyle = a.color + '55'; ctx.fill(); ctx.stroke();
+  } else if (a.type === 'lane' && q.length === 2) {
+    const lw = (a.width ?? 0.02) * w;
+    ctx.save(); ctx.globalAlpha = 0.35; ctx.lineWidth = lw; ctx.lineCap = 'butt'; path(ctx, q); ctx.stroke(); ctx.restore();
+    path(ctx, q); ctx.stroke(); head(ctx, q[0], q[1], size);
   } else if (a.type === 'freehand') {
     path(ctx, q); ctx.stroke();
   } else if (a.type === 'text' && a.text) {
@@ -65,4 +74,12 @@ export function drawAnnotations(ctx, w, h, items, {t, selectedId} = {}) {
   }
 }
 
-export const drawDraft = (ctx, w, h, draft) => { if (draft) draw(ctx, w, h, draft, true, false); };
+// Translucent copy of a player list ({x, y, team, num}) to compare with the live positions.
+export function drawGhost(ctx, w, h, players, {alpha = 0.35, radius = Math.max(8, w * 0.016), colors = {}} = {}) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (const p of players) drawPlayer(ctx, toPx(p, w, h), radius, colors[p.team] ?? '#94a3b8', p.num);
+  ctx.restore();
+}
+
+export const drawDraft =(ctx, w, h, draft) => { if (draft) draw(ctx, w, h, draft, true, false); };

@@ -5,11 +5,28 @@ const CSS = `
 .tl-panel button:disabled{opacity:.4}
 .tl-time{min-width:9em;font-variant-numeric:tabular-nums}
 .tl-scrub{flex:1;min-width:120px;min-height:44px;margin:0}
-.tl-track{position:relative;height:40px;background:#0002;border-radius:4px}
-.tl-marker{position:absolute;top:4px;width:12px;min-width:12px!important;height:32px;min-height:32px!important;
+.tl-track{position:relative;min-height:28px;background:#0002;border-radius:4px}
+.tl-marker{position:absolute;top:2px;width:12px;min-width:12px!important;height:24px;min-height:24px!important;
   padding:0!important;margin-left:-6px;border:0;border-radius:3px;background:#2a7de1;cursor:pointer}
 .tl-marker.tl-selected{background:#e1802a;outline:2px solid #000}
 `;
+
+const MAX_ROWS = 4;
+const ROW_H = 26;
+
+// Greedy row per event (aligned with input order) so near-time markers do not overlap.
+export function rowsFor(events, duration, gapPct = 2) {
+  const pos = events.map(e => (duration > 0 ? (e.t / duration) * 100 : 0));
+  const last = [];
+  const rows = new Array(events.length);
+  events.map((_, i) => i).sort((a, b) => pos[a] - pos[b]).forEach(i => {
+    let r = last.findIndex(x => pos[i] - x >= gapPct);
+    if (r < 0) r = last.length < MAX_ROWS ? last.length : MAX_ROWS - 1;
+    last[r] = pos[i];
+    rows[i] = r;
+  });
+  return rows;
+}
 
 const SPEEDS = [0.25, 0.5, 1, 1.5, 2];
 
@@ -80,11 +97,16 @@ export function createTimelinePanel(root, h) {
 
   function rebuild(events, duration) {
     track.replaceChildren();
-    markers = events.map(e => {
+    const rows = rowsFor(events, duration);
+    // inline so it overrides the page's fixed track height
+    const n = Math.max(1, ...rows.map(r => r + 1));
+    track.style.height = `${Math.max(28, n * ROW_H + 2)}px`;
+    markers = events.map((e, i) => {
       const m = btn(`${e.type} at ${e.t.toFixed(2)} seconds`, '', () => h.onSelectEvent(e.id));
       m.className = 'tl-marker';
       m.title = `${e.type} ${e.t.toFixed(2)}s`;
       m.style.left = `${duration > 0 ? (e.t / duration) * 100 : 0}%`;
+      m.style.top = `${2 + rows[i] * ROW_H}px`;
       track.append(m);
       return { m, e };
     });

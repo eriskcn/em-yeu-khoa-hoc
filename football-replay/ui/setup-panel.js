@@ -9,8 +9,9 @@ export function createSetupPanel(root, {onChange}) {
     return e;
   };
   const sels = [0, 1].map(team => {
-    const sel = el('select');
-    sel.setAttribute('aria-label', `Team ${team + 1} formation`);
+    const label = el('label', `${team ? 'Red' : 'Blue'} formation `);
+    const sel = document.createElement('select');
+    label.append(sel);
     sel.addEventListener('change', () => onChange({kind: 'formation', team, name: sel.value}));
     return sel;
   });
@@ -20,12 +21,17 @@ export function createSetupPanel(root, {onChange}) {
   return {
     update({format, formationNames}) {
       sels.forEach((sel, t) => {
-        sel.replaceChildren(...Object.keys(FORMATION_SETS[format] ?? {}).map(n => {
+        const names = Object.keys(FORMATION_SETS[format] ?? {});
+        const cur = formationNames?.[t];
+        if (!names.includes(cur)) names.unshift('');
+        sel.replaceChildren(...names.map(n => {
           const o = document.createElement('option');
-          o.value = o.textContent = n;
+          o.value = n;
+          o.textContent = n || 'Custom';
+          o.disabled = !n;
           return o;
         }));
-        sel.value = formationNames?.[t] ?? '';
+        sel.value = names.includes(cur) ? cur : '';
       });
     }
   };

@@ -45,3 +45,8 @@ test('ball staying inside gives no restart; substitutions are capped per team', 
   assert.equal(f.substitutions.length, 5);
   assert.deepEqual(f.substitutions[0], {t: 0, team: 0, off: 0, on: 20});
 });
+
+test('a shot to goal ending at a time that is not a multiple of the sample step still scores', () => {
+  const f = matchFlow(setup, [{...shot('goal'), t: 2.6, dur: .7}]);
+  assert.deepEqual(f.score, [1, 0]);
+});

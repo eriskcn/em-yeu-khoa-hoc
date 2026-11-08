@@ -22,7 +22,6 @@ import {stateAt, duration, malformed, isBallEv} from './simulation-engine.js';
 // - A shot saved by the keeper (see resolveBall) never leaves the pitch, so it is not a goal.
 // - Offside is not evaluated (rules.offside is false for 7v7).
 const STEP = .05;
-const EPS = 1e-9;
 const outside = b => b.x <= 0 || b.x >= 1 || b.y < 0 || b.y > 1;
 
 export function matchFlow(setup, events) {
@@ -37,7 +36,8 @@ export function matchFlow(setup, events) {
   const end = Math.min(duration(events), ...periods.filter(p => p.kind === 'full-time').map(p => p.t));
   let wasOut = outside(stateAt(setup, events, 0).ball);
 
-  for (let t = STEP; t <= end + EPS; t += STEP) {
+  for (let i = 1; end > 0; i++) {
+    const t = Math.min(i * STEP, end); // the last sample is exactly `end`, so float drift cannot skip a ball resting on the line
     const b = stateAt(setup, events, t).ball;
     const isOut = outside(b);
     if (isOut && !wasOut) {
@@ -60,6 +60,7 @@ export function matchFlow(setup, events) {
       }
     }
     wasOut = isOut;
+    if (t >= end) break;
   }
 
   const used = [0, 0];

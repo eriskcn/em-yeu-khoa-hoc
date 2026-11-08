@@ -21,6 +21,9 @@ export function reorderPatch(events, id, dir) {
   return {t: dir < 0 ? Math.max(0, round(n.t - STEP)) : round(n.t + STEP)};
 }
 
+// Option text matching the pitch: team colour + shirt number.
+export const playerLabel = p => `${p.team === 1 ? 'Red' : 'Blue'} #${p.num ?? p.id}`;
+
 export function createEventEditor(root, {onChange}) {
   const style = document.createElement('style');
   style.textContent = CSS;
@@ -83,7 +86,7 @@ export function createEventEditor(root, {onChange}) {
       panel.hidden = !event;
       if (!event) return;
       panel.dataset.mode = mode ?? '';
-      const ps = players.map(p => [String(p.id), `#${p.id} ${p.team ?? ''}`.trim()]);
+      const ps = players.map(p => [String(p.id), playerLabel(p)]);
       fill(actor, ps, String(event.actor));
       const hasTarget = event.target !== undefined;
       const spot = hasTarget && typeof event.target === 'object';

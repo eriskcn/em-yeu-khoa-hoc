@@ -1,5 +1,6 @@
 import {FORMATS} from './match-rules.js';
 import {createSetup} from './match-state.js';
+import {MAX_T} from './simulation-engine.js';
 import {validateAnnotations} from './annotation-state.js';
 
 const num = n => Number.isFinite(n);
@@ -36,10 +37,16 @@ function buildAnnotations(items, nextId, views, warnings) {
 
 function keepEvents(list, warnings) {
   if (!Array.isArray(list)) throw new Error('events must be an array');
+  const ids = new Set();
   return list.filter((e, i) => {
     const ok = isObj(e) && num(e.id) && num(e.t) && typeof e.type === 'string';
-    if (!ok) warnings.push(`event ${i} skipped: malformed`);
-    return ok;
+    if (!ok) { warnings.push(`event ${i} skipped: malformed`); return false; }
+    if (e.t < 0 || e.t > MAX_T || (e.dur != null && !(num(e.dur) && e.dur >= 0 && e.dur <= MAX_T))) {
+      warnings.push(`event ${i} skipped: t/dur out of range`); return false;
+    }
+    if (ids.has(e.id)) { warnings.push(`event ${i} skipped: duplicate id`); return false; }
+    ids.add(e.id);
+    return true;
   });
 }
 

@@ -28,6 +28,7 @@ import {createEventEditor} from './event-editor.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
 import {createSelection, toggle, clear, has, moveSelected} from '../interaction/selection.js';
+import {createAutosave} from './autosave.js';
 import {createContextMenu} from './context-menu.js';
 
 let FORMAT = 7;
@@ -69,14 +70,15 @@ const toolHint = id => id === 'save' ? 'Click the goalkeeper to save the shot in
   : id === 'move' ? 'Click a player, then the destination. The time stays, so others can run in the same frame.'
   : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
-function save() {
-  try { localStorage.setItem(SAVE_KEY, exportScenario({setup, events, annotations: annos})); } catch { /* storage unavailable or full */ }
-}
+// localStorage is touched lazily: merely reading it can throw when storage is blocked.
+const autosave = createAutosave({setItem: (k, v) => localStorage.setItem(k, v), getItem: k => localStorage.getItem(k)}, SAVE_KEY);
+const save = () => autosave.save(exportScenario({setup, events, annotations: annos}));
 function commit() { history.push(snapshot()); const m = checkEvents(); save(); return m; }
 
 // matchFlow/possession depend only on setup/events, which are replaced, never mutated.
 let cache = {setup: null, events: null};
 function derived() {
+  if ((active === drag || active === groupDrag) && cache.flow) return cache; // recomputed on the render after pointer up
   if (cache.setup !== setup || cache.events !== events) {
     const d = duration(events);
     cache = {setup, events, flow: matchFlow(setup, events),
@@ -246,6 +248,7 @@ function clickTool(pt) {
     invalidate();
     return;
   }
+  if (tool === 'tackle' && !p) { say('Click the player being tackled.'); return; }
   const actor = pending;
   const {w, h} = size, n = toNorm(pt, w, h), spot = {x: clamp01(n.x), y: clamp01(n.y)};
   pending = null;
@@ -253,7 +256,7 @@ function clickTool(pt) {
   if (tool === 'move' || tool === 'dribble') addEv({type: tool, actor, to: spot, t, dur: DUR[tool]});
   else if (tool === 'shot') addEv({type: 'shot', actor, target: p ? (p.id === actor ? 'goal' : p.id) : spot, t, dur: DUR.shot});
   else if (p && p.id === actor) say('Cancelled.');
-  else if (tool === 'tackle') addEv({type: 'tackle', actor, target: p ? p.id : spot, won: true, t, dur: DUR.tackle});
+  else if (tool === 'tackle') addEv({type: 'tackle', actor, target: p.id, won: true, t, dur: DUR.tackle});
   else addEv({type: tool, actor, target: p ? p.id : spot, t, dur: DUR[tool]});
 }
 
@@ -334,7 +337,7 @@ attachPointer(canvas, {
     active = null;
     if (!was) return; // a second finger already cancelled the drag
     was.up();
-    if (was === drag || was === groupDrag) commit();
+    if (was === drag || was === groupDrag) { commit(); invalidate(); }
   }
 });
 
@@ -523,7 +526,7 @@ propsBtn.addEventListener('click', () => propsBtn.setAttribute('aria-expanded', 
 setPhase('setup');
 say('Drag players to set the starting positions, then pick an event tool.');
 try {
-  const saved = localStorage.getItem(SAVE_KEY);
+  const saved = autosave.load();
   if (saved) {
     const r = importScenario(saved);
     FORMAT = r.setup.format;

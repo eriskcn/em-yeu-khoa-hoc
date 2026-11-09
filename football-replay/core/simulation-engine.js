@@ -6,7 +6,7 @@ const lerp = (a, b, u) => ({x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u})
 
 export const duration = events => events.reduce((m, e) => Math.max(m, e.t + (e.dur ?? 0)), 0);
 
-const MAX_T = 600;
+export const MAX_T = 600;
 
 // Structural problem with an event (message) or null. Such events are ignored by stateAt.
 export function malformed(setup, ev) {

@@ -12,6 +12,7 @@ import {analyze} from '../analysis/tactical-analyzer.js';
 import {possessionShare} from '../analysis/passing-analysis.js';
 import {drawPitch, toPx, toNorm, playerRadius, hitRadius, setView} from '../rendering/pitch-renderer.js';
 import {drawPlayer} from '../rendering/player-renderer.js';
+import {pickPlayer} from '../interaction/pick-player.js';
 import {drawBall} from '../rendering/ball-renderer.js';
 import {drawAnnotations, drawDraft, drawGhost} from '../rendering/annotation-renderer.js';
 import {attachPointer} from '../interaction/pointer-controller.js';
@@ -165,7 +166,10 @@ function render() {
       ctx.stroke();
     }
   });
-  drawBall(ctx, toPx(s.ball, w, h), r);
+  const bp = toPx(s.ball, w, h), own = s.ball.owner == null ? null : s.players.find(p => p.id === s.ball.owner);
+  // controlled ball sits on the owner's attacking edge so the shirt number stays visible
+  if (own) { const q = toPx(own, w, h); bp.x = q.x + (own.team === (setup.flipped ? 1 : 0) ? 1 : -1) * r * 1.2; bp.y = q.y; }
+  drawBall(ctx, bp, r);
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
     canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
@@ -184,10 +188,12 @@ function render() {
 // --- events -----------------------------------------------------------------
 function playerAt(pt) {
   const {w, h} = size, r = hitRadius(w);
-  return [...stateAt(setup, events, t).players].reverse().find(p => {
+  const st = stateAt(setup, events, t).players;
+  const hits = [...st].reverse().filter(p => {
     const q = toPx(p, w, h);
     return Math.hypot(pt.x - q.x, pt.y - q.y) < r;
   });
+  return pickPlayer(hits, tool, pending == null ? null : st.find(p => p.id === pending)?.team);
 }
 
 function addEv(ev) {

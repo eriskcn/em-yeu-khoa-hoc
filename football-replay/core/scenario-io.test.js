@@ -45,3 +45,11 @@ test('garbage and bad versions throw', () => {
   assert.throws(() => importScenario('{"v":9}'), /version/);
   assert.throws(() => importScenario('{"v":2,"setup":{}}'), /setup/);
 });
+
+test('events with out-of-range t/dur or duplicate id are skipped with a warning', () => {
+  const {setup} = make();
+  const ev = (id, extra) => ({id, type: 'move', t: 1, ...extra});
+  const r = importScenario(JSON.stringify({v: 2, setup, events: [ev(1), ev(2, {t: 1e6}), ev(3, {dur: '1e9'}), ev(1), ev(4, {dur: 5})]}));
+  assert.deepEqual(r.events.map(e => e.id), [1, 4]);
+  assert.equal(r.warnings.length, 3);
+});

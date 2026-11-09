@@ -1,5 +1,5 @@
 import {FORMATS, goalOf} from './match-rules.js';
-import {malformed, resolveBall, stateAt} from './simulation-engine.js';
+import {label, malformed, resolveBall, stateAt} from './simulation-engine.js';
 
 // Edit mode flags rule breaks; simulate mode rejects them. Malformed data is rejected in both.
 export function validateEvents(setup, events, mode = 'simulate') {
@@ -10,7 +10,7 @@ export function validateEvents(setup, events, mode = 'simulate') {
   for (const ev of events) {
     const msg = malformed(setup, ev);
     if (msg) { issues.push({eventId: ev?.id, level: 'rejected', code: 'malformed', message: msg}); continue; }
-    if (seen.has(ev.id)) { issues.push({eventId: ev.id, level: 'rejected', code: 'duplicate-id', message: `duplicate id ${ev.id}`}); continue; }
+    if (seen.has(ev.id)) { issues.push({eventId: ev.id, level: 'rejected', code: 'duplicate-id', message: `Duplicate event id ${ev.id}. Remove or renumber one of them.`}); continue; }
     seen.add(ev.id);
     good.push(ev);
   }
@@ -21,20 +21,20 @@ export function validateEvents(setup, events, mode = 'simulate') {
   for (const ev of good.filter(e => e.type === 'move' || e.type === 'dribble').sort((a, b) => a.t - b.t || a.id - b.id)) {
     const prev = end.get(ev.actor) ?? -Infinity;
     if (ev.t < prev && !issues.some(i => i.eventId === ev.id && i.code === 'overlap')) {
-      issues.push({eventId: ev.id, level, code: 'overlap', message: `player ${ev.actor} is already moving`});
+      issues.push({eventId: ev.id, level, code: 'overlap', message: `${label(setup, ev.actor)} is already moving at that time. Start this ${ev.type} after the previous move ends.`});
     }
     end.set(ev.actor, Math.max(prev, ev.t + ev.dur));
   }
   const team = id => setup.players.find(p => p.id === id).team;
   for (const ev of good) {
     if ((ev.type === 'pass' || ev.type === 'cross') && typeof ev.target === 'number' && team(ev.target) !== team(ev.actor)) {
-      issues.push({eventId: ev.id, level, code: 'opponent-target', message: `${ev.type} to an opponent`});
+      issues.push({eventId: ev.id, level, code: 'opponent-target', message: `${ev.type === 'cross' ? 'Cross' : 'Pass'} blocked: ${label(setup, ev.actor)} cannot ${ev.type} to ${label(setup, ev.target)}. Pick a ${team(ev.actor) === 1 ? 'Red' : 'Blue'} player or a spot.`});
     }
   }
   if (mode === 'simulate' && FORMATS[setup.format]?.offside) {
     for (const ev of good) {
       if ((ev.type === 'pass' || ev.type === 'cross') && typeof ev.target === 'number' && offside(setup, good, ev)) {
-        issues.push({eventId: ev.id, level: 'warning', code: 'offside', message: `${ev.type} to a player in an offside position`});
+        issues.push({eventId: ev.id, level: 'warning', code: 'offside', message: `${label(setup, ev.actor)}'s ${ev.type} to ${label(setup, ev.target)} is offside. Pick a player behind the ball or the defence line.`});
       }
     }
   }
@@ -42,8 +42,8 @@ export function validateEvents(setup, events, mode = 'simulate') {
   const off = new Set();
   const maxSubs = FORMATS[setup.format].maxSubs;
   for (const ev of good.filter(e => e.type === 'sub').sort((a, b) => a.t - b.t || a.id - b.id)) {
-    if (off.has(ev.off)) issues.push({eventId: ev.id, level, code: 'already-subbed', message: `player ${ev.off} was already subbed off`});
-    else if (++used[ev.team] > maxSubs) issues.push({eventId: ev.id, level, code: 'max-subs', message: `more than ${maxSubs} substitutions for team ${ev.team}`});
+    if (off.has(ev.off)) issues.push({eventId: ev.id, level, code: 'already-subbed', message: `${label(setup, ev.off)} was already subbed off. Pick a different player to replace.`});
+    else if (++used[ev.team] > maxSubs) issues.push({eventId: ev.id, level, code: 'max-subs', message: `${ev.team === 1 ? 'Red' : 'Blue'} already used all ${maxSubs} substitutions. Remove this sub.`});
     off.add(ev.off);
   }
   return issues;

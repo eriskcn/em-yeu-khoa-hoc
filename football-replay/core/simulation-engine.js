@@ -39,6 +39,11 @@ export function malformed(setup, ev) {
   return null;
 }
 
+export const label = (setup, id) => {
+  const p = setup.players.find(q => q.id === id);
+  return p ? `${p.team === 1 ? 'Red' : 'Blue'} #${p.num ?? p.id}` : `player ${id}`;
+};
+
 export const isBallEv = e => BALL_TYPES.includes(e.type) || e.type === 'save';
 const valid = (setup, events) => events.filter(e => !malformed(setup, e)).sort(byTime);
 
@@ -71,13 +76,13 @@ export function resolveBall(setup, events, t) {
   for (const ev of sorted.filter(isBallEv)) {
     if (ev.t > t) break;
     if (ev.type === 'save') {
-      if (!consumed.has(ev.id)) issues.push({eventId: ev.id, code: 'bad-save', message: 'save needs the goalkeeper and a shot in flight toward their goal'});
+      if (!consumed.has(ev.id)) issues.push({eventId: ev.id, code: 'bad-save', message: 'Save ignored: it needs the goalkeeper and a shot already in flight toward their goal. Add the shot first or remove the save.'});
       continue;
     }
-    if (ev.t < busyUntil) { issues.push({eventId: ev.id, code: 'overlap', message: 'ball events overlap in time'}); continue; }
+    if (ev.t < busyUntil) { issues.push({eventId: ev.id, code: 'overlap', message: `${label(setup, ev.actor)} has overlapping ball actions. Move this one after the previous action ends.`}); continue; }
     if (ev.type !== 'tackle' && owner !== ev.actor) {
-      if (!ev.manual) { issues.push({eventId: ev.id, code: 'not-owner', message: `player ${ev.actor} does not have the ball`}); continue; }
-      issues.push({eventId: ev.id, code: 'manual-teleport', message: `ball moved to player ${ev.actor} manually`});
+      if (!ev.manual) { issues.push({eventId: ev.id, code: 'not-owner', message: `${label(setup, ev.actor)} does not have the ball at that time. Give the ball first or pick the current owner.`}); continue; }
+      issues.push({eventId: ev.id, code: 'manual-teleport', message: `Ball given to ${label(setup, ev.actor)} manually. Add a pass or tackle to make it legal.`});
       owner = ev.actor;
     }
     const end = ev.t + ev.dur;

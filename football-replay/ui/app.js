@@ -25,7 +25,7 @@ import {exportScenario, importScenario} from '../core/scenario-io.js';
 import {createSetupPanel} from './setup-panel.js';
 import {createTimelinePanel} from './timeline-panel.js';
 import {createAnalysisPanel} from './analysis-panel.js';
-import {createEventEditor} from './event-editor.js';
+import {createEventEditor, playerLabel} from './event-editor.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
 import {createSelection, toggle, clear, has, moveSelected} from '../interaction/selection.js';
@@ -176,7 +176,7 @@ function render() {
   setupPanel.update({format: FORMAT, formationNames});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
-  canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with player ${s.players.find(p => p.id === s.ball.owner).num}`}.`);
+  canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with ${playerLabel(s.players.find(p => p.id === s.ball.owner))}`}.`);
   const {flow: f, possession} = derived();
   flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
     ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '');

@@ -63,6 +63,7 @@
     // Avatar click: grow a circle from the avatar until it covers the page, then navigate.
     document.getElementById('avatar').onclick = (e) => {
       e.preventDefault();
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return (location.href = './football-replay/');
       const r = e.currentTarget.querySelector('img').getBoundingClientRect();
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       const radius = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy));

@@ -41,8 +41,7 @@ a.back{order:9;margin-left:auto}
 #timeline .tl-panel>:nth-child(1){overflow-x:auto;flex-wrap:nowrap;max-width:60vw}
 #timeline .tl-panel>:nth-child(1){scrollbar-width:none}
 #timeline .tl-panel>:nth-child(1)>*{flex:none}
-#timeline .tl-panel>:nth-child(3){grid-column:1/-1;min-height:28px}
-#timeline .tl-marker{height:24px;min-height:24px!important}
+#timeline .tl-panel>:nth-child(2){grid-column:1/-1}
 #props{position:fixed;top:52px;right:0;bottom:0;z-index:10;width:min(340px,75vw);padding:8px;background:#232323;overflow:auto;font-size:13px;box-shadow:-8px 0 24px #000a;transform:translateX(100%);visibility:hidden}
 body.props-open #props{transform:none;visibility:visible}
 #props>div:not(:empty){padding:6px 2px;border-bottom:1px solid #000}
@@ -62,7 +61,7 @@ button,select,input[type=checkbox],a.back,summary,label{min-height:32px}
 header{padding:0 8px}
 #props,.tb-menu{top:34px}
 #timeline{padding:2px 8px}
-#timeline .tl-panel button,#timeline .tl-panel select,#timeline .tl-scrub{min-height:32px}
+#timeline .tl-panel button,#timeline .tl-panel select{min-height:32px}
 #timeline .tl-panel{gap:2px 8px}
 #viewer{padding:2px}
 #viewer canvas{margin-top:2px;width:min(100%,calc((100dvh - 40px) * 1.5))}
@@ -76,7 +75,7 @@ body.tl-open #timeline .tl-track{display:block}
 }
 @media (pointer:fine){
 button,select,input[type=checkbox],a.back,summary,label{min-height:30px}
-#timeline .tl-panel button,#timeline .tl-panel select,#timeline .tl-scrub{min-height:30px;min-width:30px}
+#timeline .tl-panel button,#timeline .tl-panel select{min-height:30px;min-width:30px}
 #props .ee-panel :is(button,select,input),#props .ap-panel :is(button,input){min-height:30px;min-width:30px}
 #props,.tb-menu{top:40px}
 }

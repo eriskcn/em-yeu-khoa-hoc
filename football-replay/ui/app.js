@@ -186,7 +186,7 @@ function render() {
   flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
     ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '')
     + (f.periods.length ? ` · ${f.periods.map(p => `${p.kind} @${p.t.toFixed(2)}s`).join(', ')}` : '')
-    + (f.substitutions.length ? ` · subs ${f.substitutions.length}/${FORMATS[FORMAT].maxSubs} per team max` : '')
+    + (f.substitutions.length ? ` · subs ${f.substitutions.length} (max ${FORMATS[FORMAT].maxSubs} per team)` : '')
     + ' · Not simulated: free kick, penalty';
   const a = analyze({state: s, events, aspect, t});
   a.approximate.possession = possession;

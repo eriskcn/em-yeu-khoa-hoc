@@ -1,8 +1,10 @@
+import {setIcon} from './icons.js';
 const CSS = `
 .tl-panel{display:flex;flex-direction:column;gap:8px;font:14px sans-serif}
 .tl-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .tl-panel button,.tl-panel select{min-height:44px;min-width:44px;padding:0 10px;font:inherit}
 .tl-panel button:disabled{opacity:.4}
+.tl-panel .lbl{display:none}
 .tl-time{min-width:9em;font-variant-numeric:tabular-nums}
 .tl-scrub{flex:1;min-width:120px;min-height:44px;margin:0}
 .tl-track{position:relative;min-height:28px;background:#0002;border-radius:4px}
@@ -34,23 +36,22 @@ export function createTimelinePanel(root, h) {
   const style = document.createElement('style');
   style.textContent = CSS;
 
-  const btn = (label, text, onClick) => {
+  const btn = (label, icon, onClick) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = text;
-    b.setAttribute('aria-label', label);
+    setIcon(b, icon, label);
     b.addEventListener('click', onClick);
     return b;
   };
 
-  const play = btn('Play', 'Play', () => h.onToggle());
-  const restart = btn('Restart', 'Restart', () => h.onRestart());
-  const stepBack = btn('Step back one frame', '-1f', () => h.onStep(-1));
-  const stepFwd = btn('Step forward one frame', '+1f', () => h.onStep(1));
-  const prev = btn('Previous event', 'Prev event', () => h.onPrev());
-  const next = btn('Next event', 'Next event', () => h.onNext());
-  const undo = btn('Undo', 'Undo', () => h.onUndo());
-  const redo = btn('Redo', 'Redo', () => h.onRedo());
+  const play = btn('Play', 'play', () => h.onToggle());
+  const restart = btn('Restart', 'restart', () => h.onRestart());
+  const stepBack = btn('Step back one frame', 'stepBack', () => h.onStep(-1));
+  const stepFwd = btn('Step forward one frame', 'stepFwd', () => h.onStep(1));
+  const prev = btn('Previous event', 'prev', () => h.onPrev());
+  const next = btn('Next event', 'next', () => h.onNext());
+  const undo = btn('Undo', 'undo', () => h.onUndo());
+  const redo = btn('Redo', 'redo', () => h.onRedo());
 
   const speed = document.createElement('select');
   speed.setAttribute('aria-label', 'Playback speed');
@@ -121,8 +122,10 @@ export function createTimelinePanel(root, h) {
         m.classList.toggle('tl-selected', e.id === selectedId);
         m.setAttribute('aria-pressed', String(e.id === selectedId));
       }
-      play.textContent = playing ? 'Pause' : 'Play';
-      play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+      if (play.dataset.playing !== String(playing)) {
+        play.dataset.playing = String(playing);
+        setIcon(play, playing ? 'pause' : 'play', playing ? 'Pause' : 'Play');
+      }
       scrub.max = String(duration);
       scrub.value = String(t);
       label.textContent = `${t.toFixed(2)} / ${duration.toFixed(2)} s`;

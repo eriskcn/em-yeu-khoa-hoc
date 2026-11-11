@@ -1,3 +1,4 @@
+import {setIcon} from './icons.js';
 // Format label, Edit/Simulate switch, tool groups and a few actions. No state of its own.
 export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings, onToggleGhost, onResetView, onExport, onImport, onPhase, phases, phase, headerRoot}) {
   const el = (tag, parent, text, cls) => {
@@ -60,7 +61,8 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
     wraps.push([g.phase, wrap]);
     el('span', wrap, g.name, 'tb-group');
     g.tools.forEach(([id, text]) => {
-      const b = el('button', wrap, text, 'tool');
+      const b = el('button', wrap, null, 'tool');
+      setIcon(b, id, text);
       b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', () => onTool(id));

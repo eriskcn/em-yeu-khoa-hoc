@@ -13,6 +13,7 @@ import {possessionShare} from '../analysis/passing-analysis.js';
 import {drawPitch, toPx, toNorm, playerRadius, hitRadius, setView} from '../rendering/pitch-renderer.js';
 import {drawPlayer} from '../rendering/player-renderer.js';
 import {pickPlayer} from '../interaction/pick-player.js';
+import {nextClick, addedMessage, DUR} from '../interaction/click-tool.js';
 import {drawBall} from '../rendering/ball-renderer.js';
 import {drawAnnotations, drawDraft, drawGhost} from '../rendering/annotation-renderer.js';
 import {attachPointer} from '../interaction/pointer-controller.js';
@@ -35,7 +36,6 @@ import {createContextMenu} from './context-menu.js';
 let FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
 let aspect = FORMATS[FORMAT].aspect;
-const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1, save: .4, tackle: .5};
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
 const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
@@ -207,9 +207,7 @@ function addEv(ev) {
   selectedId = events.find(e => !before.has(e.id)).id;
   const issue = commit(), warn = res.issues.length ? `Warning: ${res.issues[0].message}` : issue;
   const num = id => stateAt(setup, events, 0).players.find(p => p.id === id)?.num ?? id;
-  const tgt = ev.target === undefined ? '' : ` -> ${typeof ev.target === 'object' ? 'spot' : ev.target === 'goal' ? 'goal' : num(ev.target)}`;
-  const who = ev.type === 'phase' ? ev.kind : `${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt}`;
-  say(`${who[0].toUpperCase() + who.slice(1)} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
+  say(addedMessage(ev, num, warn));
   // Ball actions chain, so move to where this one ends; runs and subs keep the time so more can start in the same frame.
   replay.seek(isBallEv(ev) ? ev.t + ev.dur : ev.t);
 }
@@ -245,25 +243,12 @@ function clickTool(pt) {
     addEv({type: 'sub', team: p.team, off: p.id, on: String(top + 1), t, dur: 0});
     return;
   }
-  if (pending === null) {
-    if (!p) { say('Click the player who performs the action.'); return; }
-    pending = p.id;
-    say(tool === 'move' || tool === 'dribble' ? 'Click the destination.'
-      : tool === 'tackle' ? 'Click the player being tackled.'
-      : tool === 'shot' ? 'Click a spot, or the shooter again to shoot at goal.' : 'Click a player or an empty spot.');
-    invalidate();
-    return;
-  }
-  if (tool === 'tackle' && !p) { say('Click the player being tackled.'); return; }
-  const actor = pending;
-  const {w, h} = size, n = toNorm(pt, w, h), spot = {x: clamp01(n.x), y: clamp01(n.y)};
-  pending = null;
+  const {w, h} = size, n = toNorm(pt, w, h);
+  const r = nextClick(tool, pending, p, {x: clamp01(n.x), y: clamp01(n.y)});
+  pending = r.pending;
+  if (r.msg) say(r.msg);
   invalidate();
-  if (tool === 'move' || tool === 'dribble') addEv({type: tool, actor, to: spot, t, dur: DUR[tool]});
-  else if (tool === 'shot') addEv({type: 'shot', actor, target: p ? (p.id === actor ? 'goal' : p.id) : spot, t, dur: DUR.shot});
-  else if (p && p.id === actor) say('Cancelled.');
-  else if (tool === 'tackle') addEv({type: 'tackle', actor, target: p.id, won: true, t, dur: DUR.tackle});
-  else addEv({type: tool, actor, target: p ? p.id : spot, t, dur: DUR[tool]});
+  if (r.ev) addEv({...r.ev, t});
 }
 
 // --- pointer routing ----------------------------------------------------------

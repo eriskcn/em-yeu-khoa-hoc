@@ -15,7 +15,7 @@ const CSS = `
 .tl-panel button:disabled{opacity:.4}
 .tl-panel .lbl{display:none}
 .tl-time{min-width:9em;font-variant-numeric:tabular-nums}
-.tl-track{position:relative;max-height:min(30dvh,170px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+.tl-track{position:relative;max-height:min(22dvh,110px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   background:#0002;border-radius:4px;user-select:none;-webkit-user-select:none}
 .tl-inner{position:relative;min-width:100%}
 .tl-ruler,.tl-r{display:flex}

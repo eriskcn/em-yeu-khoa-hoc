@@ -1,4 +1,4 @@
-import {goalOf, EVENT_TYPES, BALL_TYPES} from './match-rules.js';
+import {goalOf, EVENT_TYPES, BALL_TYPES, FORMATS} from './match-rules.js';
 
 const isPt = o => o !== null && typeof o === 'object' && Number.isFinite(o.x) && Number.isFinite(o.y);
 const byTime = (a, b) => a.t - b.t || a.id - b.id;
@@ -7,6 +7,11 @@ const lerp = (a, b, u) => ({x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u})
 export const duration = events => events.reduce((m, e) => Math.max(m, e.t + (e.dur ?? 0)), 0);
 
 export const MAX_T = 600;
+export const RECEIVE_REACH = 3; // metres: how close a player must be to a loose ball to receive it
+export const metres = (setup, a, b) => {
+  const [L, W] = FORMATS[setup.format]?.pitch ?? [105, 68];
+  return Math.hypot((a.x - b.x) * L, (a.y - b.y) * W);
+};
 
 // Structural problem with an event (message) or null. Such events are ignored by stateAt.
 export function malformed(setup, ev) {
@@ -82,6 +87,8 @@ export function resolveBall(setup, events, t) {
     if (ev.t < busyUntil) { issues.push({eventId: ev.id, code: 'overlap', message: `${label(setup, ev.actor)} has overlapping ball actions. Move this one after the previous action ends.`}); continue; }
     if (ev.type === 'receive') {
       if (owner !== null) { issues.push({eventId: ev.id, code: 'bad-receive', message: `Receive ignored: ${label(setup, ev.actor)} can only receive a loose ball. Use it after a pass or shot to a spot, or remove it.`}); continue; }
+      const d = metres(setup, posAt(setup, sorted, ev.actor, ev.t), loose);
+      if (d > RECEIVE_REACH) { issues.push({eventId: ev.id, code: 'too-far', message: `Receive blocked: ${label(setup, ev.actor)} is ${d.toFixed(1)} m from the ball (max ${RECEIVE_REACH} m). Run to the ball first, or use the Receive tool, which adds the run.`}); continue; }
       const rEnd = ev.t + ev.dur;
       busyUntil = rEnd;
       if (t < rEnd) {

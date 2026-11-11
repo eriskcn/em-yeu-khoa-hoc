@@ -28,6 +28,7 @@ import {createTimelinePanel} from './timeline-panel.js';
 import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor, playerLabel} from './event-editor.js';
 import {setIcon} from './icons.js';
+import {planReceive} from '../interaction/receive-plan.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
 import {createSelection, toggle, clear, set as setSel, has, moveSelected, playersInRect} from '../interaction/selection.js';
@@ -209,7 +210,7 @@ function addEv(ev) {
   const res = addEvent(events, ev, mode, setup);
   if (res.events === events) {
     say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Event not added.');
-    return;
+    return false;
   }
   const before = new Set(events.map(e => e.id));
   events = res.events;
@@ -219,6 +220,7 @@ function addEv(ev) {
   say(addedMessage(ev, num, warn));
   // Ball actions chain, so move to where this one ends; runs and subs keep the time so more can start in the same frame.
   replay.seek(isBallEv(ev) ? ev.t + ev.dur : ev.t);
+  return true;
 }
 
 function deleteSelected() {
@@ -248,7 +250,9 @@ function clickTool(pt) {
   }
   if (tool === 'receive') {
     if (!p) { say('Click the player who receives the loose ball.'); return; }
-    addEv({type: 'receive', actor: p.id, t, dur: DUR.receive});
+    const plan = planReceive(setup, events, p.id, t);
+    if (plan.error) { say(plan.error); return; }
+    for (const ev of plan.events) if (!addEv(ev)) return;
     return;
   }
   if (tool === 'sub') {

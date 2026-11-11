@@ -29,7 +29,7 @@ import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor, playerLabel} from './event-editor.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
-import {createSelection, toggle, clear, has, moveSelected} from '../interaction/selection.js';
+import {createSelection, toggle, clear, set as setSel, has, moveSelected, playersInRect} from '../interaction/selection.js';
 import {createAutosave} from './autosave.js';
 import {createContextMenu} from './context-menu.js';
 
@@ -146,6 +146,11 @@ function render() {
   if (showGhost) drawGhost(ctx, w, h, stateAt(setup, events, 0).players, {colors: TEAM_COLORS, radius: r});
   if (!hideDrawings) drawAnnotations(ctx, w, h, annos.items, {t});
   drawDraft(ctx, w, h, draft);
+  if (marquee) {
+    ctx.strokeStyle = '#22d3ee'; ctx.setLineDash([4, 3]);
+    ctx.strokeRect(marquee.a.x, marquee.a.y, marquee.b.x - marquee.a.x, marquee.b.y - marquee.a.y);
+    ctx.setLineDash([]);
+  }
   s.players.forEach(p => {
     const px = toPx(p, w, h);
     drawPlayer(ctx, px, r, TEAM_COLORS[p.team], p.num);
@@ -275,6 +280,19 @@ const drawing = createDrawingController({
   }
 });
 
+let marquee = null; // {a, b} in canvas px
+// Drag on empty pitch draws a box; players inside become the selection.
+const marqueeDrag = {
+  move(pt) { marquee.b = pt; invalidate(); },
+  up() {
+    const {a, b} = marquee;
+    marquee = null;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 6) return invalidate(); // tap or a second finger arriving: keep selection
+    const [p, q] = [toNorm(a, size.w, size.h), toNorm(b, size.w, size.h)];
+    sel = setSel(sel, playersInRect(setup.players, {x0: p.x, y0: p.y, x1: q.x, y1: q.y}));
+    invalidate();
+  }
+};
 let active = null;
 let groupFrom = null;
 // Dragging a selected player moves every selected player by the same offset.
@@ -295,27 +313,32 @@ const menu = createContextMenu(document.body, {
     invalidate();
   }
 });
-canvas.addEventListener('contextmenu', e => {
-  e.preventDefault();
-  const r = canvas.getBoundingClientRect(), p = playerAt({x: e.clientX - r.left, y: e.clientY - r.top});
+function showMenu(clientX, clientY) {
+  const r = canvas.getBoundingClientRect(), p = playerAt({x: clientX - r.left, y: clientY - r.top});
   if (!p) return;
   const pick = id => ({id, player: p});
-  menu.show(e.clientX, e.clientY, [
+  menu.show(clientX, clientY, [
     {id: pick('toggle'), label: `${has(sel, p.id) ? 'Deselect' : 'Select'} #${p.num}`},
     {id: pick('owner'), label: 'Give ball', disabled: t !== 0},
     {id: pick('clear'), label: 'Clear selection', disabled: sel.ids.size === 0}
   ]);
-});
+}
+canvas.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY); });
 attachPointer(canvas, {
-  down(pt) {
+  longPress(pt, e) { active = null; marquee = null; showMenu(e.clientX, e.clientY); },
+  down(pt, e) {
     replay.pause();
     if (DRAW_TOOLS.includes(tool)) { active = drawing; return drawing.down(pt); }
     if (tool === 'drag') {
       if (t !== 0) { say('Go to 0.00 s to move players into the starting setup.'); return false; }
       const hit = playerAt(pt);
+      if (hit && (e.shiftKey || e.ctrlKey || e.metaKey)) { sel = toggle(sel, hit.id); invalidate(); return false; }
       if (hit && sel.ids.size > 1 && has(sel, hit.id)) { groupFrom = toNorm(pt, size.w, size.h); active = groupDrag; return true; }
       active = drag;
-      return drag.down(pt);
+      if (drag.down(pt)) return true;
+      marquee = {a: pt, b: pt};
+      active = marqueeDrag;
+      return true;
     }
     clickTool(pt);
     return false;

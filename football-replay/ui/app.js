@@ -179,7 +179,7 @@ function render() {
   drawBall(ctx, bp, r);
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
-    canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
+    canUndo: history.canUndo(), canRedo: history.canRedo(), speed, setup});
   setupPanel.update({format: FORMAT, formationNames, setup});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
@@ -494,6 +494,7 @@ const timeline = createTimelinePanel(document.getElementById('timeline'), {
     replay.seek(events.find(e => e.id === id).t);
     invalidate();
   },
+  onUpdateEvent: editEvent,
   onUndo: () => apply(history.undo(), 'Undone'),
   onRedo: () => apply(history.redo(), 'Redone')
 });
@@ -525,14 +526,13 @@ const setupPanel = createSetupPanel(document.getElementById('setup'), {
 const PHASES_ALL = [['setup', document.getElementById('setup')], ['sim', document.getElementById('editor')], ['sim', document.getElementById('flow')],
   ['analysis', document.getElementById('annotations')], ['analysis', document.getElementById('analysis')]];
 const flowEl = document.getElementById('flow');
-const editor = createEventEditor(document.getElementById('editor'), {
-  onChange: (id, patch) => {
-    const res = updateEvent(events, id, patch, mode, setup);
-    if (res.events === events) say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Edit rejected.');
-    else { events = res.events; commit(); }
-    invalidate();
-  }
-});
+function editEvent(id, patch) {
+  const res = updateEvent(events, id, patch, mode, setup);
+  if (res.events === events) say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Edit rejected.');
+  else { events = res.events; commit(); }
+  invalidate();
+}
+const editor = createEventEditor(document.getElementById('editor'), {onChange: editEvent});
 const annoPanel = createAnnotationPanel(document.getElementById('annotations'), {
   onChange: i => {
     try {

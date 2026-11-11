@@ -27,6 +27,7 @@ import {createSetupPanel} from './setup-panel.js';
 import {createTimelinePanel} from './timeline-panel.js';
 import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor, playerLabel} from './event-editor.js';
+import {setIcon} from './icons.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
 import {createSelection, toggle, clear, set as setSel, has, moveSelected, playersInRect} from '../interaction/selection.js';
@@ -546,6 +547,8 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', invalidate);
 const propsBtn = document.getElementById('btn-props');
+setIcon(propsBtn, 'panels', 'Panels');
+setIcon(document.querySelector('a.back'), 'home', 'Home');
 propsBtn.addEventListener('click', () => propsBtn.setAttribute('aria-expanded', String(document.body.classList.toggle('props-open'))));
 setPhase('setup');
 say('Drag players to set the starting positions, then pick an event tool.');

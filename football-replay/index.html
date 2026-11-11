@@ -27,9 +27,9 @@ h1{font-size:14px;margin:0 6px 0 0;white-space:nowrap}
 a.back{order:9;margin-left:auto}
 .tb-group{font-size:11px;color:#94a3b8;margin:6px 0 2px}
 #toolbar{display:contents}
-.tb-tools{grid-area:tools;display:flex;flex-flow:row wrap;align-content:flex-start;gap:4px;padding:6px;background:#232323;overflow:auto}
+.tb-tools{grid-area:tools;display:flex;flex-direction:column;gap:4px;padding:6px;background:#232323;overflow:auto}
 .tb-wrap{display:contents}.tb-wrap[hidden]{display:none}
-.tb-tools button{width:auto}.tb-group{width:100%}
+.tb-tools button{width:100%}
 .lbl{display:none}.ic{flex:none}
 @media (pointer:coarse){.lbl{display:inline;margin-left:6px}}
 #viewer{display:block;grid-area:view;overflow:auto;padding:4px;background:#181818;min-width:0}
@@ -87,7 +87,7 @@ button,select,input[type=checkbox],a.back,summary,label{min-height:30px}
 .wrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"head" "view" "tools" "time"}
 header{flex-wrap:wrap}
 #viewer canvas{width:100%}
-.tb-tools{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}
+.tb-tools{flex-direction:row;overflow-x:auto;overflow-y:hidden}
 .tb-wrap{display:flex;gap:4px;flex:none;align-items:center}.tb-wrap[hidden]{display:none}
 .tb-tools button{width:auto;flex:none}
 }

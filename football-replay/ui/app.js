@@ -178,7 +178,7 @@ function render() {
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
     canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
-  setupPanel.update({format: FORMAT, formationNames});
+  setupPanel.update({format: FORMAT, formationNames, setup});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
   canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with ${playerLabel(s.players.find(p => p.id === s.ball.owner))}`}.`);
@@ -492,6 +492,13 @@ const setupPanel = createSetupPanel(document.getElementById('setup'), {
       setup = flipOrientation(setup);
       commit();
       say('Sides flipped.');
+      invalidate();
+      return;
+    }
+    if (i.kind === 'loose') {
+      if (t !== 0) { say('Go to 0.00 s to start with a loose ball.'); return; }
+      setup = setOwner(setup, null);
+      commit();
       invalidate();
       return;
     }

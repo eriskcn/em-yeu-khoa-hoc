@@ -3,6 +3,7 @@ export const FORMATS = {
   5: {
     label: '5v5',
     aspect: 1.4,
+    pitch: [42, 30], // default length x width in metres (display only; rendering uses aspect)
     formation: [[.04, .5], [.17, .3], [.17, .7], [.36, .35], [.36, .65]],
     offside: false,
     goalHalf: .12,
@@ -12,6 +13,7 @@ export const FORMATS = {
   7: {
     label: '7v7',
     aspect: 1.5, // pitch width / height
+    pitch: [60, 40],
     formation: [[.04, .5], [.15, .25], [.15, .75], [.28, .35], [.28, .65], [.38, .3], [.38, .7]],
     offside: false,
     goalHalf: .1, // goal mouth is y in [.5-goalHalf, .5+goalHalf]
@@ -21,6 +23,7 @@ export const FORMATS = {
   11: {
     label: '11v11',
     aspect: 1.55,
+    pitch: [105, 68],
     formation: [[.03, .5], [.14, .15], [.14, .38], [.14, .62], [.14, .85], [.28, .15], [.28, .38], [.28, .62], [.28, .85], [.4, .38], [.4, .62]],
     offside: true,
     goalHalf: .06,

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {FORMATS} from './match-rules.js';
 import {createSetup, setOwner} from './match-state.js';
-import {FORMATION_SETS, applyFormation, flipOrientation, roleOf} from './formations.js';
+import {FORMATION_SETS, applyFormation, flipOrientation, roleOf, roleSummary} from './formations.js';
 
 test('every formation has the format player count, one GK, in range', () => {
   for (const [fmt, sets] of Object.entries(FORMATION_SETS)) {
@@ -41,4 +41,11 @@ test('roleOf fallback', () => {
   const s = createSetup(5);
   assert.equal(roleOf(s, 0), 'GK');
   assert.equal(roleOf(s, 1), null);
+});
+
+test('roleSummary lists number and role per team; pitch size is defined per format', () => {
+  const s = applyFormation(createSetup(5), 0, '2-2');
+  assert.deepEqual(roleSummary(s, 0), ['1 GK', '2 DF', '3 DF', '4 FW', '5 FW']);
+  assert.equal(roleSummary(createSetup(5), 1)[0].endsWith('GK'), true);
+  for (const f of Object.values(FORMATS)) assert.equal(f.pitch.length, 2);
 });

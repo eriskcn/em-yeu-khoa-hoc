@@ -80,6 +80,17 @@ export function resolveBall(setup, events, t) {
       continue;
     }
     if (ev.t < busyUntil) { issues.push({eventId: ev.id, code: 'overlap', message: `${label(setup, ev.actor)} has overlapping ball actions. Move this one after the previous action ends.`}); continue; }
+    if (ev.type === 'receive') {
+      if (owner !== null) { issues.push({eventId: ev.id, code: 'bad-receive', message: `Receive ignored: ${label(setup, ev.actor)} can only receive a loose ball. Use it after a pass or shot to a spot, or remove it.`}); continue; }
+      const rEnd = ev.t + ev.dur;
+      busyUntil = rEnd;
+      if (t < rEnd) {
+        const u = (t - ev.t) / ev.dur;
+        return out(lerp(loose, posAt(setup, sorted, ev.actor, rEnd), u), 0, 'in-transit');
+      }
+      owner = ev.actor;
+      continue;
+    }
     if (ev.type !== 'tackle' && owner !== ev.actor) {
       if (!ev.manual) { issues.push({eventId: ev.id, code: 'not-owner', message: `${label(setup, ev.actor)} does not have the ball at that time. Give the ball first or pick the current owner.`}); continue; }
       issues.push({eventId: ev.id, code: 'manual-teleport', message: `Ball given to ${label(setup, ev.actor)} manually. Add a pass or tackle to make it legal.`});

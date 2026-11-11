@@ -68,7 +68,7 @@ function checkEvents() {
   say(msg);
   return msg;
 }
-const toolHint = id => id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
+const toolHint = id => id === 'receive' ? 'Click the player who takes the loose ball.' : id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
   : id === 'move' ? 'Click a player, then the destination. The time stays, so others can run in the same frame.'
   : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
@@ -246,6 +246,11 @@ function clickTool(pt) {
     addEv({type: 'save', actor: p.id, t, dur: DUR.save});
     return;
   }
+  if (tool === 'receive') {
+    if (!p) { say('Click the player who receives the loose ball.'); return; }
+    addEv({type: 'receive', actor: p.id, t, dur: DUR.receive});
+    return;
+  }
   if (tool === 'sub') {
     if (!p) { say('Click the player to substitute off.'); return; }
     const top = Math.max(setup.players.length / 2, ...events.filter(e => e.type === 'sub' && e.team === p.team).map(e => Number(e.on) || 0));
@@ -369,7 +374,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
   mode,
   groups: [
     {name: 'Setup', phase: 'setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
-    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['tackle', 'Tackle'], ['save', 'Save'], ['sub', 'Substitute'],
+    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['tackle', 'Tackle'], ['save', 'Save'], ['receive', 'Receive'], ['sub', 'Substitute'],
       ['half-time', 'Half-time'], ['full-time', 'Full-time']]},
     {name: 'Draw', phase: 'analysis', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
       ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text'],

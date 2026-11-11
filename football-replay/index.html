@@ -80,8 +80,14 @@ button,select,input[type=checkbox],a.back,summary,label{min-height:30px}
 @media (pointer:fine) and (min-height:481px){
 #viewer canvas{width:min(100%,calc((100dvh - 150px) * 1.4))}
 }
+/* portrait phones: pitch first, tools as a bottom bar, timeline last (#14) */
 @media (orientation:portrait) and (max-width:700px){
-#rotate{display:flex;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:18px;background:#0b1120}
+.wrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"head" "view" "tools" "time"}
+header{flex-wrap:wrap}
+#viewer canvas{width:100%}
+.tb-tools{flex-direction:row;overflow-x:auto;overflow-y:hidden}
+.tb-wrap{display:flex;gap:4px;flex:none;align-items:center}.tb-wrap[hidden]{display:none}
+.tb-tools button{width:auto;flex:none}
 }
 </style>
 </head>

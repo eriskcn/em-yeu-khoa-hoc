@@ -10,7 +10,7 @@ export const toPx = (p, w, h, v = cur) => ({
   x: (PAD + p.x * (w - 2 * PAD)) * v.scale + v.ox, y: (PAD + p.y * (h - 2 * PAD)) * v.scale + v.oy});
 export const toNorm = (q, w, h, v = cur) => ({
   x: ((q.x - v.ox) / v.scale - PAD) / (w - 2 * PAD), y: ((q.y - v.oy) / v.scale - PAD) / (h - 2 * PAD)});
-export const playerRadius = (w, v = cur) => Math.max(10, w * 0.024) * v.scale;
+export const playerRadius = (w, v = cur) => Math.max(14, w * 0.024) * v.scale;
 // Hit radius in screen px: at least 22 px so small phone players stay tappable.
 export const hitRadius = (w, v = cur) => Math.max(22, playerRadius(w, v) * 1.2);
 

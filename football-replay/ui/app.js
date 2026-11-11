@@ -13,6 +13,7 @@ import {possessionShare} from '../analysis/passing-analysis.js';
 import {drawPitch, toPx, toNorm, playerRadius, hitRadius, setView} from '../rendering/pitch-renderer.js';
 import {drawPlayer} from '../rendering/player-renderer.js';
 import {pickPlayer} from '../interaction/pick-player.js';
+import {nextClick, addedMessage, DUR} from '../interaction/click-tool.js';
 import {drawBall} from '../rendering/ball-renderer.js';
 import {drawAnnotations, drawDraft, drawGhost} from '../rendering/annotation-renderer.js';
 import {attachPointer} from '../interaction/pointer-controller.js';
@@ -28,14 +29,13 @@ import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor, playerLabel} from './event-editor.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
-import {createSelection, toggle, clear, has, moveSelected} from '../interaction/selection.js';
+import {createSelection, toggle, clear, set as setSel, has, moveSelected, playersInRect} from '../interaction/selection.js';
 import {createAutosave} from './autosave.js';
 import {createContextMenu} from './context-menu.js';
 
 let FORMAT = 7;
 const TEAM_COLORS = ['#1e6fd9', '#e03c31'];
 let aspect = FORMATS[FORMAT].aspect;
-const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1, save: .4, tackle: .5};
 const DRAW_TOOLS = ['arrow', 'line', 'curve', 'circle', 'area', 'freehand', 'text', 'defline', 'press', 'lane'];
 const PHASES = {setup: ['drag', 'setup'], sim: ['pass', 'editor'], analysis: ['arrow', 'annotations']};
 const FLIGHT = ['pass', 'cross', 'shot'];
@@ -146,6 +146,11 @@ function render() {
   if (showGhost) drawGhost(ctx, w, h, stateAt(setup, events, 0).players, {colors: TEAM_COLORS, radius: r});
   if (!hideDrawings) drawAnnotations(ctx, w, h, annos.items, {t});
   drawDraft(ctx, w, h, draft);
+  if (marquee) {
+    ctx.strokeStyle = '#22d3ee'; ctx.setLineDash([4, 3]);
+    ctx.strokeRect(marquee.a.x, marquee.a.y, marquee.b.x - marquee.a.x, marquee.b.y - marquee.a.y);
+    ctx.setLineDash([]);
+  }
   s.players.forEach(p => {
     const px = toPx(p, w, h);
     drawPlayer(ctx, px, r, TEAM_COLORS[p.team], p.num);
@@ -173,13 +178,16 @@ function render() {
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
     canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
-  setupPanel.update({format: FORMAT, formationNames});
+  setupPanel.update({format: FORMAT, formationNames, setup});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
   canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with ${playerLabel(s.players.find(p => p.id === s.ball.owner))}`}.`);
   const {flow: f, possession} = derived();
   flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
-    ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '');
+    ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '')
+    + (f.periods.length ? ` · ${f.periods.map(p => `${p.kind} @${p.t.toFixed(2)}s`).join(', ')}` : '')
+    + (f.substitutions.length ? ` · subs ${f.substitutions.length} (max ${FORMATS[FORMAT].maxSubs} per team)` : '')
+    + ' · Not simulated: free kick, penalty';
   const a = analyze({state: s, events, aspect, t});
   a.approximate.possession = possession;
   analysisPanel.update(a);
@@ -207,9 +215,7 @@ function addEv(ev) {
   selectedId = events.find(e => !before.has(e.id)).id;
   const issue = commit(), warn = res.issues.length ? `Warning: ${res.issues[0].message}` : issue;
   const num = id => stateAt(setup, events, 0).players.find(p => p.id === id)?.num ?? id;
-  const tgt = ev.target === undefined ? '' : ` -> ${typeof ev.target === 'object' ? 'spot' : ev.target === 'goal' ? 'goal' : num(ev.target)}`;
-  const who = ev.type === 'phase' ? ev.kind : `${ev.type[0].toUpperCase() + ev.type.slice(1)} ${num(ev.actor ?? ev.off)}${tgt}`;
-  say(`${who[0].toUpperCase() + who.slice(1)} added at ${ev.t.toFixed(2)} s` + (warn ? `. ${warn}` : ''));
+  say(addedMessage(ev, num, warn));
   // Ball actions chain, so move to where this one ends; runs and subs keep the time so more can start in the same frame.
   replay.seek(isBallEv(ev) ? ev.t + ev.dur : ev.t);
 }
@@ -245,25 +251,12 @@ function clickTool(pt) {
     addEv({type: 'sub', team: p.team, off: p.id, on: String(top + 1), t, dur: 0});
     return;
   }
-  if (pending === null) {
-    if (!p) { say('Click the player who performs the action.'); return; }
-    pending = p.id;
-    say(tool === 'move' || tool === 'dribble' ? 'Click the destination.'
-      : tool === 'tackle' ? 'Click the player being tackled.'
-      : tool === 'shot' ? 'Click a spot, or the shooter again to shoot at goal.' : 'Click a player or an empty spot.');
-    invalidate();
-    return;
-  }
-  if (tool === 'tackle' && !p) { say('Click the player being tackled.'); return; }
-  const actor = pending;
-  const {w, h} = size, n = toNorm(pt, w, h), spot = {x: clamp01(n.x), y: clamp01(n.y)};
-  pending = null;
+  const {w, h} = size, n = toNorm(pt, w, h);
+  const r = nextClick(tool, pending, p, {x: clamp01(n.x), y: clamp01(n.y)});
+  pending = r.pending;
+  if (r.msg) say(r.msg);
   invalidate();
-  if (tool === 'move' || tool === 'dribble') addEv({type: tool, actor, to: spot, t, dur: DUR[tool]});
-  else if (tool === 'shot') addEv({type: 'shot', actor, target: p ? (p.id === actor ? 'goal' : p.id) : spot, t, dur: DUR.shot});
-  else if (p && p.id === actor) say('Cancelled.');
-  else if (tool === 'tackle') addEv({type: 'tackle', actor, target: p.id, won: true, t, dur: DUR.tackle});
-  else addEv({type: tool, actor, target: p ? p.id : spot, t, dur: DUR[tool]});
+  if (r.ev) addEv({...r.ev, t});
 }
 
 // --- pointer routing ----------------------------------------------------------
@@ -290,6 +283,19 @@ const drawing = createDrawingController({
   }
 });
 
+let marquee = null; // {a, b} in canvas px
+// Drag on empty pitch draws a box; players inside become the selection.
+const marqueeDrag = {
+  move(pt) { marquee.b = pt; invalidate(); },
+  up() {
+    const {a, b} = marquee;
+    marquee = null;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 6) return invalidate(); // tap or a second finger arriving: keep selection
+    const [p, q] = [toNorm(a, size.w, size.h), toNorm(b, size.w, size.h)];
+    sel = setSel(sel, playersInRect(setup.players, {x0: p.x, y0: p.y, x1: q.x, y1: q.y}));
+    invalidate();
+  }
+};
 let active = null;
 let groupFrom = null;
 // Dragging a selected player moves every selected player by the same offset.
@@ -310,27 +316,32 @@ const menu = createContextMenu(document.body, {
     invalidate();
   }
 });
-canvas.addEventListener('contextmenu', e => {
-  e.preventDefault();
-  const r = canvas.getBoundingClientRect(), p = playerAt({x: e.clientX - r.left, y: e.clientY - r.top});
+function showMenu(clientX, clientY) {
+  const r = canvas.getBoundingClientRect(), p = playerAt({x: clientX - r.left, y: clientY - r.top});
   if (!p) return;
   const pick = id => ({id, player: p});
-  menu.show(e.clientX, e.clientY, [
+  menu.show(clientX, clientY, [
     {id: pick('toggle'), label: `${has(sel, p.id) ? 'Deselect' : 'Select'} #${p.num}`},
     {id: pick('owner'), label: 'Give ball', disabled: t !== 0},
     {id: pick('clear'), label: 'Clear selection', disabled: sel.ids.size === 0}
   ]);
-});
+}
+canvas.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY); });
 attachPointer(canvas, {
-  down(pt) {
+  longPress(pt, e) { active = null; marquee = null; showMenu(e.clientX, e.clientY); },
+  down(pt, e) {
     replay.pause();
     if (DRAW_TOOLS.includes(tool)) { active = drawing; return drawing.down(pt); }
     if (tool === 'drag') {
       if (t !== 0) { say('Go to 0.00 s to move players into the starting setup.'); return false; }
       const hit = playerAt(pt);
+      if (hit && (e.shiftKey || e.ctrlKey || e.metaKey)) { sel = toggle(sel, hit.id); invalidate(); return false; }
       if (hit && sel.ids.size > 1 && has(sel, hit.id)) { groupFrom = toNorm(pt, size.w, size.h); active = groupDrag; return true; }
       active = drag;
-      return drag.down(pt);
+      if (drag.down(pt)) return true;
+      marquee = {a: pt, b: pt};
+      active = marqueeDrag;
+      return true;
     }
     clickTool(pt);
     return false;
@@ -484,6 +495,13 @@ const setupPanel = createSetupPanel(document.getElementById('setup'), {
       setup = flipOrientation(setup);
       commit();
       say('Sides flipped.');
+      invalidate();
+      return;
+    }
+    if (i.kind === 'loose') {
+      if (t !== 0) { say('Go to 0.00 s to start with a loose ball.'); return; }
+      setup = setOwner(setup, null);
+      commit();
       invalidate();
       return;
     }

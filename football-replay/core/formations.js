@@ -52,3 +52,7 @@ export function roleOf(setup, id) {
   if (p.role) return p.role;
   return setup.players.find(q => q.team === p.team)?.id === id ? 'GK' : null;
 }
+
+// Players of a team as 'num ROLE' items in id order, e.g. ['1 GK', '2 DF'] (no role -> number only).
+export const roleSummary = (setup, team) => setup.players.filter(p => p.team === team).sort((a, b) => a.id - b.id)
+  .map(p => [p.num ?? p.id, roleOf(setup, p.id)].filter(v => v != null).join(' '));

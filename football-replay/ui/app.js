@@ -184,7 +184,10 @@ function render() {
   canvas.setAttribute('aria-label', `${FORMATS[FORMAT].label} pitch at ${t.toFixed(2)} s. ${s.ball.owner == null ? `Ball ${s.ball.status ?? 'loose'}` : `Ball with ${playerLabel(s.players.find(p => p.id === s.ball.owner))}`}.`);
   const {flow: f, possession} = derived();
   flowEl.textContent = `Score ${f.score[0]}–${f.score[1]}` + (f.restarts.length
-    ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '');
+    ? ` · ${f.restarts.map(r => `${r.kind} (team ${r.team + 1}) @${r.t.toFixed(2)}s`).join(', ')}` : '')
+    + (f.periods.length ? ` · ${f.periods.map(p => `${p.kind} @${p.t.toFixed(2)}s`).join(', ')}` : '')
+    + (f.substitutions.length ? ` · subs ${f.substitutions.length}/${FORMATS[FORMAT].maxSubs} per team max` : '')
+    + ' · Not simulated: free kick, penalty';
   const a = analyze({state: s, events, aspect, t});
   a.approximate.possession = possession;
   analysisPanel.update(a);

@@ -36,6 +36,6 @@ export const FORMATS = {
 export const GOAL = {0: {x: 1, y: .5}, 1: {x: 0, y: .5}};
 // Goal a team shoots at; setup.flipped (see flipOrientation) swaps ends.
 export const goalOf = (setup, team) => GOAL[setup.flipped ? 1 - team : team];
-export const EVENT_TYPES = ['move', 'pass', 'cross', 'shot', 'dribble', 'tackle', 'sub', 'save', 'phase'];
+export const EVENT_TYPES = ['move', 'pass', 'cross', 'shot', 'dribble', 'tackle', 'sub', 'save', 'receive', 'phase'];
 // Events that involve the ball: they may not overlap in time.
-export const BALL_TYPES = ['pass', 'cross', 'shot', 'dribble', 'tackle'];
+export const BALL_TYPES = ['pass', 'cross', 'shot', 'dribble', 'tackle', 'receive'];

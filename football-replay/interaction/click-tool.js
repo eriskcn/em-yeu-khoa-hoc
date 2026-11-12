@@ -1,7 +1,7 @@
 // Two-click tools (pass/cross/shot/dribble/move/tackle): given the pending actor id (or null),
 // the player under the cursor (or undefined) and the clicked spot, return the next pending id,
 // a status message, and the event to add (without t).
-export const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1, save: .4, tackle: .5};
+export const DUR = {pass: .8, cross: 1.2, shot: .7, dribble: 1, move: 1, save: .4, tackle: .5, receive: .5};
 
 export function nextClick(tool, pending, p, spot) {
   if (pending === null) {

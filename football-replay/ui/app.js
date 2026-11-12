@@ -27,6 +27,8 @@ import {createSetupPanel} from './setup-panel.js';
 import {createTimelinePanel} from './timeline-panel.js';
 import {createAnalysisPanel} from './analysis-panel.js';
 import {createEventEditor, playerLabel} from './event-editor.js';
+import {setIcon} from './icons.js';
+import {planReceive} from '../interaction/receive-plan.js';
 import {createAnnotationPanel} from './annotation-panel.js';
 import {matchFlow} from '../core/match-flow.js';
 import {createSelection, toggle, clear, set as setSel, has, moveSelected, playersInRect} from '../interaction/selection.js';
@@ -67,7 +69,7 @@ function checkEvents() {
   say(msg);
   return msg;
 }
-const toolHint = id => id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
+const toolHint = id => id === 'receive' ? 'Click the player who takes the loose ball.' : id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
   : id === 'move' ? 'Click a player, then the destination. The time stays, so others can run in the same frame.'
   : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
 const SAVE_KEY = 'football-replay:scenario';
@@ -177,7 +179,7 @@ function render() {
   drawBall(ctx, bp, r);
 
   timeline.update({t, duration: duration(events), events, playing: replay.isPlaying(), selectedId,
-    canUndo: history.canUndo(), canRedo: history.canRedo(), speed});
+    canUndo: history.canUndo(), canRedo: history.canRedo(), speed, setup});
   setupPanel.update({format: FORMAT, formationNames, setup});
   editor.update({event: events.find(e => e.id === selectedId) || null, players: setup.players, mode, events});
   annoPanel.update({items: annos.items, views: annos.views, t});
@@ -208,7 +210,7 @@ function addEv(ev) {
   const res = addEvent(events, ev, mode, setup);
   if (res.events === events) {
     say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Event not added.');
-    return;
+    return false;
   }
   const before = new Set(events.map(e => e.id));
   events = res.events;
@@ -218,6 +220,7 @@ function addEv(ev) {
   say(addedMessage(ev, num, warn));
   // Ball actions chain, so move to where this one ends; runs and subs keep the time so more can start in the same frame.
   replay.seek(isBallEv(ev) ? ev.t + ev.dur : ev.t);
+  return true;
 }
 
 function deleteSelected() {
@@ -243,6 +246,13 @@ function clickTool(pt) {
   if (tool === 'save') {
     if (!p) { say('Click the goalkeeper.'); return; }
     addEv({type: 'save', actor: p.id, t, dur: DUR.save});
+    return;
+  }
+  if (tool === 'receive') {
+    if (!p) { say('Click the player who receives the loose ball.'); return; }
+    const plan = planReceive(setup, events, p.id, t);
+    if (plan.error) { say(plan.error); return; }
+    for (const ev of plan.events) if (!addEv(ev)) return;
     return;
   }
   if (tool === 'sub') {
@@ -368,7 +378,7 @@ const toolbar = createToolbar(document.getElementById('toolbar'), {
   mode,
   groups: [
     {name: 'Setup', phase: 'setup', tools: [['drag', 'Move players'], ['owner', 'Possession']]},
-    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['tackle', 'Tackle'], ['save', 'Save'], ['sub', 'Substitute'],
+    {name: 'Events', phase: 'sim', tools: [['pass', 'Pass'], ['cross', 'Cross'], ['shot', 'Shot'], ['dribble', 'Dribble'], ['move', 'Run'], ['tackle', 'Tackle'], ['save', 'Save'], ['receive', 'Receive'], ['sub', 'Substitute'],
       ['half-time', 'Half-time'], ['full-time', 'Full-time']]},
     {name: 'Draw', phase: 'analysis', tools: [['arrow', 'Arrow'], ['line', 'Line'], ['curve', 'Curve'], ['circle', 'Circle'],
       ['area', 'Area'], ['freehand', 'Freehand'], ['text', 'Text'],
@@ -484,6 +494,7 @@ const timeline = createTimelinePanel(document.getElementById('timeline'), {
     replay.seek(events.find(e => e.id === id).t);
     invalidate();
   },
+  onUpdateEvent: editEvent,
   onUndo: () => apply(history.undo(), 'Undone'),
   onRedo: () => apply(history.redo(), 'Redone')
 });
@@ -515,14 +526,13 @@ const setupPanel = createSetupPanel(document.getElementById('setup'), {
 const PHASES_ALL = [['setup', document.getElementById('setup')], ['sim', document.getElementById('editor')], ['sim', document.getElementById('flow')],
   ['analysis', document.getElementById('annotations')], ['analysis', document.getElementById('analysis')]];
 const flowEl = document.getElementById('flow');
-const editor = createEventEditor(document.getElementById('editor'), {
-  onChange: (id, patch) => {
-    const res = updateEvent(events, id, patch, mode, setup);
-    if (res.events === events) say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Edit rejected.');
-    else { events = res.events; commit(); }
-    invalidate();
-  }
-});
+function editEvent(id, patch) {
+  const res = updateEvent(events, id, patch, mode, setup);
+  if (res.events === events) say(res.issues.filter(i => i.level === 'rejected').map(i => i.message).join('; ') || 'Edit rejected.');
+  else { events = res.events; commit(); }
+  invalidate();
+}
+const editor = createEventEditor(document.getElementById('editor'), {onChange: editEvent});
 const annoPanel = createAnnotationPanel(document.getElementById('annotations'), {
   onChange: i => {
     try {
@@ -546,6 +556,8 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', invalidate);
 const propsBtn = document.getElementById('btn-props');
+setIcon(propsBtn, 'panels', 'Panels');
+setIcon(document.querySelector('a.back'), 'home', 'Home');
 propsBtn.addEventListener('click', () => propsBtn.setAttribute('aria-expanded', String(document.body.classList.toggle('props-open'))));
 setPhase('setup');
 say('Drag players to set the starting positions, then pick an event tool.');

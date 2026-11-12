@@ -1,3 +1,4 @@
+import {setIcon} from './icons.js';
 // Format label, Edit/Simulate switch, tool groups and a few actions. No state of its own.
 export function createToolbar(root, {formats, format, groups, mode, onTool, onMode, onFormat, onReset, onKickoff, onDeleteEvent, onClearDrawings, onToggleDrawings, onToggleGhost, onResetView, onExport, onImport, onPhase, phases, phase, headerRoot}) {
   const el = (tag, parent, text, cls) => {
@@ -8,7 +9,7 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
     return e;
   };
   const menu = el('details', headerRoot, null, 'tb-menu-wrap');
-  el('summary', menu, 'Menu');
+  setIcon(el('summary', menu), 'menu', 'Menu');
   const row = el('div', menu, null, 'tb-menu');
   const fsel = el('select', row, null, 'format');
   fsel.setAttribute('aria-label', 'Match format');
@@ -20,19 +21,19 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
   [['simulate', 'Simulate (rules enforced)'], ['edit', 'Edit (free)']].forEach(([v, t]) => { el('option', sel, t).value = v; });
   sel.value = mode;
   sel.addEventListener('change', () => onMode(sel.value));
-  const act = (text, fn) => el('button', row, text).addEventListener('click', fn);
-  act('Reset', onReset);
-  act('Kick-off', onKickoff);
-  act('Delete event', onDeleteEvent);
-  act('Clear drawings', onClearDrawings);
-  act('Reset zoom', onResetView);
-  act('Export', onExport);
+  const act = (name, text, fn) => { const b = el('button', row); setIcon(b, name, text); b.addEventListener('click', fn); };
+  act('reset', 'Reset', onReset);
+  act('kickoff', 'Kick-off', onKickoff);
+  act('delete', 'Delete event', onDeleteEvent);
+  act('clear', 'Clear drawings', onClearDrawings);
+  act('zoom', 'Reset zoom', onResetView);
+  act('export', 'Export', onExport);
   const file = el('input', row);
   file.type = 'file';
   file.accept = '.json,application/json';
   file.hidden = true;
   file.addEventListener('change', async () => { if (file.files[0]) onImport(await file.files[0].text()); file.value = ''; });
-  act('Import', () => file.click());
+  act('import', 'Import', () => file.click());
   const hide = el('label', row, 'Hide drawings');
   const cb = document.createElement('input');
   cb.type = 'checkbox';
@@ -48,7 +49,8 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
   const phaseRow = el('div', headerRoot, null, 'tb-phases');
   el('span', phaseRow, 'Phase', 'tb-group');
   const phaseBtns = phases.map(([id, text]) => {
-    const b = el('button', phaseRow, text);
+    const b = el('button', phaseRow);
+    setIcon(b, id, text);
     b.type = 'button';
     b.addEventListener('click', () => onPhase(id));
     return [id, b];
@@ -60,7 +62,8 @@ export function createToolbar(root, {formats, format, groups, mode, onTool, onMo
     wraps.push([g.phase, wrap]);
     el('span', wrap, g.name, 'tb-group');
     g.tools.forEach(([id, text]) => {
-      const b = el('button', wrap, text, 'tool');
+      const b = el('button', wrap, null, 'tool');
+      setIcon(b, id, text);
       b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', () => onTool(id));

@@ -1,10 +1,10 @@
-# WBS: football-replay
+# WBS: pitch-lab
 
 ## Objective
-Improve `football-replay/index.html` (single-file football scenario simulator: players, ball, timeline, events) so scenarios can be saved, shared and used reliably, without changing its single-file, no-build structure.
+Improve `pitch-lab/index.html` (single-file football scenario simulator: players, ball, timeline, events) so scenarios can be saved, shared and used reliably, without changing its single-file, no-build structure.
 
 ## Review of current state (2026-11-06)
-Facts, from reading `football-replay/index.html` (910 lines):
+Facts, from reading `pitch-lab/index.html` (910 lines):
 - Features: 5/7/11-a-side, team colors, drag to create keyframes, 8 event types (pass, cross, shot, dribble, tackle, block, duel, aerial), timeline scrubbing, play/speed, VI/EN, keyboard shortcuts, DPR-aware canvas.
 - Gaps:
   - No save/load/export. A scenario is lost on reload.
@@ -89,12 +89,12 @@ Goal added by the audit: the tool becomes a three-phase Football Scenario Recons
 
 Success criteria: each issue's acceptance line passes and, where #17 exists, is covered by a test.
 
-## Rewrite (branch `refactor/football-replay-modular`, 2026-11-07; user-approved)
-Plan: [docs/football-replay-plan.md](../docs/football-replay-plan.md). PoC kept in `football-replay-poc/`. 7v7 first; 5v5 and 11v11 after.
+## Rewrite (branch `refactor/pitch-lab-modular`, 2026-11-07; user-approved)
+Plan: [docs/pitch-lab-plan.md](../docs/pitch-lab-plan.md). PoC kept in `pitch-lab-poc/`. 7v7 first; 5v5 and 11v11 after.
 
 | ID | Task | Issues | Status |
 |----|------|--------|--------|
-| R0 | Back up PoC to `football-replay-poc/` | — | Completed |
+| R0 | Back up PoC to `pitch-lab-poc/` | — | Completed |
 | R1 | Write rewrite plan | — | Completed |
 | R2 | M0: scaffold folders, 7v7 setup render + drag, Node test | #17, #22 | Completed |
 | R3 | M1: 7v7 events, possession, rule checks | #5–#8, #12 | Completed (see gaps) |
@@ -112,8 +112,8 @@ Gaps left (tracked in the issues, not done): #16 compare-with-setup overlay; #12
 Done since M7: Setup/Simulation/Analysis phase shell (#10), formation selects (#11), scenario Export/Import incl. legacy rectangle areas (#9), defensive line / press zone / lane tools and setup ghost (#15, #16), pinch-zoom and two-finger pan (#18, shared view in `rendering/pitch-renderer.js`), goalkeeper `save` and half/full-time in core (no UI tool yet).
 Open gaps: flip sides (core exists; goals and kick-off assume team 1 attacks left), pitch size, UI for save/penalty/half-time (#12, #20), multi-select and context menu (#18), i18n, player/ball radius ignore zoom.
 
-## Audit 2026-11-08 (football-replay rewrite; report only, no code changed)
-Load assumed: one person in one browser tab, scenarios of 1–60 s. Status: A1–A7, A9 Completed (branch `fix/football-replay-audit`); A8 partial (core tests added; `app.js` wiring has no test).
+## Audit 2026-11-08 (pitch-lab rewrite; report only, no code changed)
+Load assumed: one person in one browser tab, scenarios of 1–60 s. Status: A1–A7, A9 Completed (branch `fix/pitch-lab-audit`); A8 partial (core tests added; `app.js` wiring has no test).
 
 | ID | Priority | Task | Evidence |
 |----|----------|------|----------|

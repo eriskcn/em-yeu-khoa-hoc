@@ -1,6 +1,6 @@
-# football-replay rewrite plan
+# Pitch Lab rewrite plan
 
-The first version (`football-replay-poc/`, one 1140-line file) is kept as a proof of concept. The rewrite starts again in `football-replay/`, **7v7 first**, then 5v5 and 11v11.
+The first version (`pitch-lab-poc/`, one 1140-line file) is kept as a proof of concept. The rewrite starts again in `pitch-lab/` , **7v7 first**, then 5v5 and 11v11.
 
 ## Why restart
 The PoC mixes state, simulation, drawing and input in one script. That blocked tests and the fixes in issues #5–#8 (possession, ghost ball, overlap, rule checks). The restart keeps one rule: **core is pure** (no DOM), so it runs and is tested in Node.

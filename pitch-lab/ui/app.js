@@ -72,7 +72,7 @@ function checkEvents() {
 const toolHint = id => id === 'receive' ? 'Click the player who takes the loose ball.' : id === 'save' ? 'Click the goalkeeper to save the shot in flight.'
   : id === 'move' ? 'Click a player, then the destination. The time stays, so others can run in the same frame.'
   : id === 'tackle' ? 'Click the tackler, then the player tackled.' : id === 'area' || id === 'press' ? 'Click to add points; click the first point or double-click to close.' : `Tool: ${id}`;
-const SAVE_KEY = 'football-replay:scenario';
+const SAVE_KEY = 'pitch-lab:scenario';
 // localStorage is touched lazily: merely reading it can throw when storage is blocked.
 const autosave = createAutosave({setItem: (k, v) => localStorage.setItem(k, v), getItem: k => localStorage.getItem(k)}, SAVE_KEY);
 const save = () => autosave.save(exportScenario({setup, events, annotations: annos}));
@@ -562,7 +562,7 @@ propsBtn.addEventListener('click', () => propsBtn.setAttribute('aria-expanded', 
 setPhase('setup');
 say('Drag players to set the starting positions, then pick an event tool.');
 try {
-  const saved = autosave.load();
+  const saved = autosave.load() ?? (() => { try { return localStorage.getItem('football-replay:scenario'); } catch { return null; } })(); // shortcut: reads the pre-rename save key, drop after a few weeks
   if (saved) {
     const r = importScenario(saved);
     FORMAT = r.setup.format;
